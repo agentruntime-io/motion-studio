@@ -9,6 +9,10 @@ interface PreviewPlayerProps {
   project: VideoProject
   ready: boolean
   renderFrame: (ctx: CanvasRenderingContext2D, time: number) => void
+  prerenderUrl?: string | null
+  usePrerenderPreview?: boolean
+  currentTime?: number
+  onCurrentTimeChange?: (time: number) => void
   onTimeChange?: (time: number) => void
 }
 
@@ -20,12 +24,40 @@ function formatTime(seconds: number): string {
 }
 
 export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>(
-  function PreviewPlayer({ project, ready, renderFrame, onTimeChange }, ref) {
+  function PreviewPlayer(
+    {
+      project,
+      ready,
+      renderFrame,
+      prerenderUrl,
+      usePrerenderPreview,
+      currentTime: controlledTime,
+      onCurrentTimeChange,
+      onTimeChange,
+    },
+    ref,
+  ) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
     const [playing, setPlaying] = useState(false)
-    const [currentTime, setCurrentTime] = useState(0)
+    const [internalTime, setInternalTime] = useState(0)
     const rafRef = useRef<number>(0)
     const lastTickRef = useRef<number>(0)
+    const timeRef = useRef(0)
+    const useVideo = Boolean(usePrerenderPreview && prerenderUrl)
+
+    const currentTime = controlledTime ?? internalTime
+    timeRef.current = currentTime
+
+    const setCurrentTime = useCallback(
+      (value: number | ((prev: number) => number)) => {
+        const next = typeof value === 'function' ? value(timeRef.current) : value
+        timeRef.current = next
+        onCurrentTimeChange?.(next)
+        if (controlledTime === undefined) setInternalTime(next)
+      },
+      [controlledTime, onCurrentTimeChange],
+    )
 
     useImperativeHandle(ref, () => ({
       getCanvas: () => canvasRef.current,
@@ -42,12 +74,42 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
       [renderFrame],
     )
 
-    useEffect(() => {
-      draw(currentTime)
-    }, [currentTime, draw, ready])
+    const syncVideoTime = useCallback((time: number) => {
+      const video = videoRef.current
+      if (!video || !useVideo) return
+      if (Math.abs(video.currentTime - time) > 0.05) {
+        video.currentTime = time
+      }
+    }, [useVideo])
 
     useEffect(() => {
-      if (!playing || !ready) return
+      if (useVideo) {
+        syncVideoTime(currentTime)
+      } else {
+        draw(currentTime)
+      }
+    }, [currentTime, draw, ready, syncVideoTime, useVideo])
+
+    useEffect(() => {
+      setPlaying(false)
+      setCurrentTime(0)
+    }, [prerenderUrl, usePrerenderPreview])
+
+    useEffect(() => {
+      const video = videoRef.current
+      if (!video || !useVideo) return
+
+      if (playing) {
+        syncVideoTime(currentTime)
+        void video.play().catch(() => setPlaying(false))
+      } else {
+        video.pause()
+        syncVideoTime(currentTime)
+      }
+    }, [playing, useVideo, syncVideoTime, currentTime])
+
+    useEffect(() => {
+      if (!playing || useVideo || !ready) return
 
       lastTickRef.current = performance.now()
 
@@ -55,21 +117,37 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
         const delta = (now - lastTickRef.current) / 1000
         lastTickRef.current = now
 
-        setCurrentTime((prev) => {
-          const next = prev + delta
-          if (next >= project.duration) {
-            setPlaying(false)
-            return project.duration
-          }
-          return next
-        })
+        const next = timeRef.current + delta
+        if (next >= project.duration) {
+          setPlaying(false)
+          setCurrentTime(project.duration)
+          return
+        }
 
+        setCurrentTime(next)
         rafRef.current = requestAnimationFrame(tick)
       }
 
       rafRef.current = requestAnimationFrame(tick)
       return () => cancelAnimationFrame(rafRef.current)
-    }, [playing, ready, project.duration])
+    }, [playing, ready, project.duration, setCurrentTime, useVideo])
+
+    useEffect(() => {
+      const video = videoRef.current
+      if (!video || !useVideo || !playing) return
+
+      const onTimeUpdate = () => {
+        const time = video.currentTime
+        setCurrentTime(time)
+        if (time >= project.duration - 0.05) {
+          setPlaying(false)
+          video.pause()
+        }
+      }
+
+      video.addEventListener('timeupdate', onTimeUpdate)
+      return () => video.removeEventListener('timeupdate', onTimeUpdate)
+    }, [playing, project.duration, useVideo])
 
     useEffect(() => {
       onTimeChange?.(currentTime)
@@ -78,12 +156,15 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
     const togglePlay = () => {
       if (currentTime >= project.duration) {
         setCurrentTime(0)
+        syncVideoTime(0)
       }
       setPlaying((p) => !p)
     }
 
     const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCurrentTime(Number(e.target.value))
+      const value = Number(e.target.value)
+      setCurrentTime(value)
+      syncVideoTime(value)
       setPlaying(false)
     }
 
@@ -99,8 +180,21 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
             ref={canvasRef}
             width={project.width}
             height={project.height}
-            style={{ width: '100%', height: '100%' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: useVideo ? 'none' : 'block',
+            }}
           />
+          {useVideo && prerenderUrl && (
+            <video
+              ref={videoRef}
+              src={prerenderUrl}
+              className="preview-video"
+              playsInline
+              preload="auto"
+            />
+          )}
           {!ready && <div className="preview-loading">Loading assets...</div>}
         </div>
 

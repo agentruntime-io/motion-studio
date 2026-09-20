@@ -13,7 +13,7 @@ import { applyCanvasEffects } from './effects'
 
 function collectImageSources(layers: Layer[]): string[] {
   return layers.flatMap((layer) => {
-    if (layer.type === 'image') return [layer.src]
+    if (layer.type === 'image' && layer.src) return [layer.src]
     if (layer.type === 'overlay' && layer.overlayType === 'image' && layer.src) {
       return [layer.src]
     }
@@ -297,6 +297,8 @@ export class VideoRenderer {
           break
         case 'overlay':
           drawOverlayLayer(ctx, layer, this.project, time, this.images)
+          break
+        case 'audio':
           break
       }
     }

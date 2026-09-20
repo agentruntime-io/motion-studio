@@ -111,7 +111,13 @@ export interface OverlayLayer extends BaseLayer {
   style?: OverlayStyle
 }
 
-export type Layer = ImageLayer | TitleLayer | OverlayLayer
+export interface AudioLayer extends BaseLayer {
+  type: 'audio'
+  src: string
+  volume?: number
+}
+
+export type Layer = ImageLayer | TitleLayer | OverlayLayer | AudioLayer
 
 export interface VideoProject {
   name?: string
