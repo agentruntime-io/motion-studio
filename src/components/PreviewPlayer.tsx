@@ -114,10 +114,10 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
     useEffect(() => {
       if (!playing || useVideo || !ready) return
 
-      lastTickRef.current = performance.now()
+      lastTickRef.current = 0
 
       const tick = (now: number) => {
-        const delta = (now - lastTickRef.current) / 1000
+        const delta = lastTickRef.current === 0 ? 0 : Math.max(0, (now - lastTickRef.current) / 1000)
         lastTickRef.current = now
 
         const next = timeRef.current + delta
@@ -171,13 +171,12 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
       setPlaying(false)
     }
 
-    const scale = Math.min(1, 900 / project.width)
-
     return (
       <div className="preview-player">
+        <div className="preview-stage">
         <div
           className="preview-frame"
-          style={{ width: project.width * scale, height: project.height * scale }}
+          style={{ aspectRatio: `${project.width} / ${project.height}`, width: `min(100%, ${project.width / project.height * 100}cqh)` }}
         >
           <canvas
             ref={canvasRef}
@@ -200,8 +199,10 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
           )}
           {!ready && <div className="preview-loading">Loading assets...</div>}
         </div>
+        </div>
 
         <div className="preview-controls">
+          <button type="button" className="btn btn-ghost" title="Go to beginning" aria-label="Go to beginning" onClick={() => { setPlaying(false); setCurrentTime(0); syncVideoTime(0) }}>↤</button>
           <button type="button" className="btn btn-primary" onClick={togglePlay} disabled={!ready}>
             {playing ? 'Pause' : currentTime >= project.duration ? 'Replay' : 'Play'}
           </button>
@@ -213,6 +214,7 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
             value={currentTime}
             onChange={handleSeek}
             className="timeline-slider"
+            aria-label="Seek preview"
           />
           <span className="time-display">
             {formatTime(currentTime)} / {formatTime(project.duration)}

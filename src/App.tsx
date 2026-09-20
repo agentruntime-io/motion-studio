@@ -375,14 +375,7 @@ function App() {
           <span className="brand-icon">▶</span>
           <div className="brand-copy">
             <h1>Motion Studio</h1>
-            <p className="brand-tagline">Browser-based programmable video creation.</p>
-            <p className="brand-meta">Open source · Runs locally · JSON-driven</p>
-            <p className="brand-credit">
-              Built by{' '}
-              <a href="https://agentruntime.io" target="_blank" rel="noreferrer">
-                AgentRuntime
-              </a>
-            </p>
+            <span className="brand-tagline">Your ideas, in motion.</span>
           </div>
         </div>
         <div className="header-right">
@@ -431,21 +424,13 @@ function App() {
           >
             JSON
           </button>
-          <div className="project-meta">
-            {saveNotice && <span className="project-save-notice">{saveNotice}</span>}
-            {projectPath && <span>{projectPath}</span>}
-            <span>{project.width}×{project.height}</span>
-            <span>{project.fps} fps</span>
-            <span>{project.duration}s</span>
-            <span>{project.layers.length} layers</span>
-          </div>
           <button
             type="button"
             className="btn btn-accent btn-export"
             onClick={() => setExportOpen(true)}
             disabled={!ready}
           >
-            Export
+            Export video ↗
           </button>
         </div>
       </header>
@@ -490,15 +475,32 @@ function App() {
         onError={setParseError}
       />
 
+      <div className="project-bar">
+        <div className="project-breadcrumb"><span>Workspace</span><span>/</span><strong>{projectPath?.split('/').pop() || 'Untitled project'}</strong><span className="project-format">PROJECT</span></div>
+        <div className="project-meta"><span>{project.width} × {project.height}</span><span>{project.fps} fps</span><span>{project.duration}s</span></div>
+        <span className="local-status" role="status">{saveNotice || '● Local workspace'}</span>
+      </div>
       <main className="app-main">
         <section
           className="panel properties-panel"
           style={{ width: propertiesWidth }}
         >
           <div className="panel-header">
-            <h2>Properties</h2>
+            <h2>Inspector</h2><span className="panel-caption">{selectedLayer ? selectedLayer.type : 'Project'}</span>
           </div>
-          <LayerInspector
+          {!selectedLayer && <div className="project-overview">
+            <div className="overview-art" aria-hidden="true"><span>m</span><i /><i /></div>
+            <h3>Make something move.</h3>
+            <p>Start with a layer. Turn it into a story.</p>
+            <div className="quick-add-grid">
+              <button onClick={() => handleAddLayer('video')}><span>▧</span>Visual<span>+</span></button>
+              <button onClick={() => handleAddLayer('title')}><span>T</span>Title<span>+</span></button>
+              <button onClick={() => handleAddLayer('overlay')}><span>◇</span>Overlay<span>+</span></button>
+              <button onClick={() => handleAddLayer('audio')}><span>♫</span>Audio<span>+</span></button>
+            </div>
+            <div className="composition-details"><h4>COMPOSITION</h4><dl><div><dt>Canvas</dt><dd>{project.width} × {project.height}</dd></div><div><dt>Frame rate</dt><dd>{project.fps} fps</dd></div><div><dt>Duration</dt><dd>{project.duration} seconds</dd></div><div><dt>Layers</dt><dd>{project.layers.length}</dd></div></dl></div>
+          </div>}
+          {selectedLayer && <LayerInspector
             layer={selectedLayer}
             layerId={selectedLayerId}
             projectWidth={project.width}
@@ -510,7 +512,8 @@ function App() {
             onToggleAutoKeyframe={() => setAutoKeyframe((value) => !value)}
             onUpdate={handleLayerUpdate}
             onDelete={handleDeleteLayer}
-          />
+          />}
+          <div className="inspector-footer"><span>↖ Select a clip to fine-tune it</span><a href="https://agentruntime.io" target="_blank" rel="noreferrer">Made by AgentRuntime ↗</a></div>
         </section>
 
         <ResizeHandle
@@ -523,7 +526,7 @@ function App() {
         <section className="panel workspace-panel">
           <div className="workspace-preview">
             <div className="panel-header preview-panel-header">
-              <h2>Preview</h2>
+              <div className="preview-heading"><h2>Preview</h2><span>Composition</span></div>
               <div className="preview-panel-actions">
                 {ready && <span className="badge badge-success">Ready</span>}
                 <PrerenderButton

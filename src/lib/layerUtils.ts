@@ -105,12 +105,12 @@ export function getLayerLabel(layer: Layer): string {
 export function getLayerColor(layer: Layer): string {
   switch (layer.type) {
     case 'image':
-      return '#166534'
+      return '#365d4a'
     case 'title':
-      return '#6d28d9'
+      return '#63527e'
     case 'overlay':
-      if (layer.overlayType === 'text') return '#1d4ed8'
-      if (layer.overlayType === 'image') return '#c2410c'
+      if (layer.overlayType === 'text') return '#405f78'
+      if (layer.overlayType === 'image') return '#845d42'
       return '#475569'
     case 'audio':
       return '#0f766e'

@@ -1,14 +1,14 @@
 :root {
-  --bg: #0c0c12;
-  --surface: #14141f;
-  --surface-2: #1c1c2a;
-  --border: #2a2a3d;
-  --text: #e8e8f0;
-  --text-muted: #8888a0;
-  --primary: #6366f1;
-  --primary-hover: #818cf8;
-  --accent: #e94560;
-  --accent-hover: #ff6b6b;
+  --bg: #101213;
+  --surface: #191c1e;
+  --surface-2: #212527;
+  --border: #303537;
+  --text: #edf1ef;
+  --text-muted: #9ba5a3;
+  --primary: #b5efd3;
+  --primary-hover: #d2f9e5;
+  --accent: #b5efd3;
+  --accent-hover: #d2f9e5;
   --success: #22c55e;
   --error: #ef4444;
   --radius: 10px;

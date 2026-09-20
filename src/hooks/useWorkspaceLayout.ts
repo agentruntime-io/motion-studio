@@ -8,8 +8,8 @@ interface LayoutState {
 }
 
 const DEFAULT_LAYOUT: LayoutState = {
-  propertiesWidth: 320,
-  timelineHeight: 260,
+  propertiesWidth: 280,
+  timelineHeight: 280,
 }
 
 function clamp(value: number, min: number, max: number): number {
