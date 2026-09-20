@@ -12,11 +12,12 @@ import {
   saveStoredProjectPath,
 } from '../lib/projectContext'
 import { parseProjectJson } from '../data/sampleProject'
+import { analytics, type ProjectLoadSource } from '../lib/analytics'
 
 interface ProjectPathPanelProps {
   projectPath: string
   onProjectPathChange: (path: string) => void
-  onLoadProject: (json: string, path?: string) => void
+  onLoadProject: (json: string, path?: string, source?: ProjectLoadSource) => void
   onLocalFolderLoaded: () => void
   onError: (message: string | null) => void
 }
@@ -91,9 +92,10 @@ export function ProjectPathPanel({
       const json = await loadLocalProjectJson(files)
       if (json) {
         parseProjectJson(json)
-        onLoadProject(json, projectPath)
+        onLoadProject(json, projectPath, 'local_folder')
       }
 
+      analytics.localFolderImported(indexed)
       onLocalFolderLoaded()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to read local folder')

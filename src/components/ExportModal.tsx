@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { VideoProject } from '../types/project'
 import type { ExportProgress } from '../engine/exporter'
 import { downloadBlob, exportVideoWithRenderer } from '../engine/exporter'
+import { analytics } from '../lib/analytics'
 
 interface ExportModalProps {
   open: boolean
@@ -50,6 +51,7 @@ export function ExportModal({
 
     setExporting(true)
     setProgress({ phase: 'rendering', progress: 0 })
+    analytics.exportStarted(project)
 
     try {
       const blob = await exportVideoWithRenderer(
@@ -65,11 +67,14 @@ export function ExportModal({
 
       const name = (project.name ?? 'video').replace(/\s+/g, '-').toLowerCase()
       downloadBlob(blob, `${name}.webm`)
+      analytics.exportCompleted(project)
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Export failed'
+      analytics.exportFailed(project, message)
       setProgress({
         phase: 'error',
         progress: 0,
-        message: err instanceof Error ? err.message : 'Export failed',
+        message,
       })
     } finally {
       setExporting(false)

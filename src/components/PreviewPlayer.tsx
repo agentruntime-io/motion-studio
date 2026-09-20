@@ -16,6 +16,7 @@ interface PreviewPlayerProps {
   currentTime?: number
   onCurrentTimeChange?: (time: number) => void
   onTimeChange?: (time: number) => void
+  onPreviewPlay?: () => void
 }
 
 function formatTime(seconds: number): string {
@@ -37,6 +38,7 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
       currentTime: controlledTime,
       onCurrentTimeChange,
       onTimeChange,
+      onPreviewPlay,
     },
     ref,
   ) {
@@ -161,7 +163,10 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
         setCurrentTime(0)
         syncVideoTime(0)
       }
-      setPlaying((p) => !p)
+      setPlaying((p) => {
+        if (!p) onPreviewPlay?.()
+        return !p
+      })
     }
 
     const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -89,6 +89,17 @@ For Cursor agents authoring timelines, see [.cursor/skills/motion-studio/SKILL.m
 - Output: **WebM** (VP9/VP8)
 - Export renders frame-by-frame at the specified FPS
 
+## Analytics (PostHog)
+
+Optional product analytics for the live site. Disabled locally unless you configure it.
+
+1. Create a project at [posthog.com](https://posthog.com)
+2. Copy `.env.example` → `.env` and set `VITE_POSTHOG_KEY`
+3. On Vercel, add the same env vars in project settings
+4. Redeploy
+
+Events tracked: page views, project load, preview play, export, save, flow editor, prerender. No project JSON or asset paths are sent.
+
 ## License
 
 [Apache-2.0](LICENSE) © AgentRuntime

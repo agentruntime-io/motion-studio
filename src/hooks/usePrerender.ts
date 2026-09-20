@@ -9,6 +9,7 @@ import {
   isPrerenderStale,
   setPrerender,
 } from '../engine/prerenderCache'
+import { analytics } from '../lib/analytics'
 
 interface UsePrerenderOptions {
   projectPath: string
@@ -64,6 +65,7 @@ export function usePrerender({
 
     setRendering(true)
     setProgress({ phase: 'rendering', progress: 0, message: 'Pre-rendering…' })
+    analytics.prerenderStarted(project)
 
     try {
       const blob = await exportVideoWithRenderer(
@@ -79,11 +81,14 @@ export function usePrerender({
 
       setPrerender(projectPath, fingerprint, blob)
       setVersion((v) => v + 1)
+      analytics.prerenderCompleted(project)
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Pre-render failed'
+      analytics.prerenderFailed(project, message)
       setProgress({
         phase: 'error',
         progress: 0,
-        message: err instanceof Error ? err.message : 'Pre-render failed',
+        message,
       })
     } finally {
       setRendering(false)

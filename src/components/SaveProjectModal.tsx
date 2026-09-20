@@ -8,6 +8,7 @@ import {
   downloadProjectJson,
 } from '../lib/projectIO'
 import { getProjectRelativeDir } from '../lib/projectContext'
+import { analytics } from '../lib/analytics'
 
 interface SaveProjectModalProps {
   open: boolean
@@ -77,11 +78,13 @@ export function SaveProjectModal({
 
       try {
         await saveProjectToDisk(normalized, json)
+        analytics.projectSaved('disk')
         onSaved(getProjectRelativeDir(normalized), json)
         onClose()
       } catch {
         const folderName = normalized.split('/').pop() || 'project'
         downloadProjectJson(json, `${folderName}.project.json`)
+        analytics.projectSaved('download')
         onSaved(getProjectRelativeDir(normalized), json)
         onClose()
       }

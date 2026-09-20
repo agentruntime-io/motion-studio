@@ -34,6 +34,7 @@ import {
 } from './lib/keyframes'
 import { upsertKeyframeAtPlayhead } from './engine/keyframeEngine'
 import type { KeyframeProperty } from './types/project'
+import { analytics, type ProjectLoadSource } from './lib/analytics'
 import './App.css'
 
 function App() {
@@ -110,6 +111,7 @@ function App() {
       }
       applyProject(parsed, true)
       setParseError(null)
+      analytics.jsonApplied(parsed)
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'Invalid JSON')
     }
@@ -121,10 +123,11 @@ function App() {
     setSelectedLayerId(null)
     setSelectedKeyframe(null)
     setCurrentTime(0)
+    analytics.projectLoaded('reset', sampleProject)
   }
 
   const handleLoadProject = useCallback(
-    (json: string, path?: string) => {
+    (json: string, path?: string, source: ProjectLoadSource = 'disk') => {
       const parsed = parseProjectJson(json)
       replaceProject(parsed, json, true)
       setSelectedLayerId(null)
@@ -140,6 +143,7 @@ function App() {
         saveStoredProjectPath(normalized)
       }
       setParseError(null)
+      analytics.projectLoaded(source, parsed)
     },
     [replaceProject],
   )
@@ -156,7 +160,7 @@ function App() {
 
       try {
         const json = await readProjectJsonFile(file)
-        handleLoadProject(json)
+        handleLoadProject(json, undefined, 'file')
         setSaveNotice(`Opened ${file.name}`)
         setParseError(null)
       } catch (err) {
@@ -229,6 +233,7 @@ function App() {
       const newLayer = next.layers[index]
       applyProject(next, true)
       setSelectedLayerId(getLayerId(newLayer, index))
+      analytics.layerAdded(kind, next)
     },
     [applyProject, project, currentTime],
   )
@@ -414,14 +419,20 @@ function App() {
           <button
             type="button"
             className={`btn btn-ghost btn-json ${jsonOpen ? 'active' : ''}`}
-            onClick={() => setJsonOpen(true)}
+            onClick={() => {
+              setJsonOpen(true)
+              analytics.jsonPanelOpened()
+            }}
           >
             JSON
           </button>
           <button
             type="button"
             className="btn btn-accent btn-export"
-            onClick={() => setExportOpen(true)}
+            onClick={() => {
+              setExportOpen(true)
+              analytics.exportModalOpened(project)
+            }}
             disabled={!ready}
           >
             Export video ↗
@@ -463,7 +474,7 @@ function App() {
         onReset={handleReset}
         projectPath={projectPath}
         onProjectPathChange={setProjectPath}
-        onLoadProject={handleLoadProject}
+        onLoadProject={(json, path) => handleLoadProject(json, path, 'disk')}
         onLocalFolderLoaded={() => setLocalFilesVersion((v) => v + 1)}
         onError={setParseError}
       />
@@ -541,6 +552,7 @@ function App() {
               usePrerenderPreview={usePrerenderPreview}
               currentTime={currentTime}
               onCurrentTimeChange={setCurrentTime}
+              onPreviewPlay={() => analytics.previewPlayed(project)}
             />
           </div>
 

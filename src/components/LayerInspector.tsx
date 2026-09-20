@@ -3,6 +3,7 @@ import type { KeyframeProperty, KeyframeValue, Layer, SelectedKeyframeRef } from
 import type { TransitionType, AnimationType } from '../types/project'
 import { KeyframeEditor, maybeAutoKeyframeLayer } from './KeyframeEditor'
 import { FlowEditorModal } from './FlowEditorModal'
+import { analytics } from '../lib/analytics'
 
 interface LayerInspectorProps {
   layer: Layer | null
@@ -626,7 +627,10 @@ export function LayerInspector({
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => setFlowEditorOpen(true)}
+              onClick={() => {
+                setFlowEditorOpen(true)
+                analytics.flowEditorOpened(layer.nodes.length, layer.edges.length)
+              }}
             >
               Edit flow…
             </button>
