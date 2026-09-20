@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import type { KeyframeProperty, KeyframeValue, Layer, SelectedKeyframeRef } from '../types/project'
 import type { TransitionType, AnimationType } from '../types/project'
 import { KeyframeEditor, maybeAutoKeyframeLayer } from './KeyframeEditor'
+import { FlowEditorModal } from './FlowEditorModal'
 
 interface LayerInspectorProps {
   layer: Layer | null
   layerId: string | null
+  projectWidth: number
+  projectHeight: number
   currentTime: number
   autoKeyframe: boolean
   selectedKeyframe: SelectedKeyframeRef | null
@@ -17,6 +21,8 @@ interface LayerInspectorProps {
 export function LayerInspector({
   layer,
   layerId,
+  projectWidth,
+  projectHeight,
   currentTime,
   autoKeyframe,
   selectedKeyframe,
@@ -25,6 +31,8 @@ export function LayerInspector({
   onUpdate,
   onDelete,
 }: LayerInspectorProps) {
+  const [flowEditorOpen, setFlowEditorOpen] = useState(false)
+
   if (!layer || !layerId) {
     return (
       <div className="layer-inspector layer-inspector-empty">
@@ -512,7 +520,135 @@ export function LayerInspector({
         </Field>
       </InspectorSection>
 
-      {layer.type !== 'audio' && (
+      {layer.type === 'flow' && (
+        <InspectorSection title="Flow diagram">
+          <Field label="Default style">
+            <select
+              className="inspector-select"
+              value={layer.defaultNodeStyle ?? 'step'}
+              onChange={(e) =>
+                patch((l) =>
+                  l.type === 'flow'
+                    ? { ...l, defaultNodeStyle: e.target.value as 'step' | 'card' | 'n8n' }
+                    : l,
+                )
+              }
+            >
+              <option value="step">Step (numbered circles)</option>
+              <option value="card">Card (badge + label)</option>
+              <option value="n8n">n8n (automation node)</option>
+            </select>
+          </Field>
+          <Field label="Animation">
+            <select
+              className="inspector-select"
+              value={layer.flowAnimation?.mode ?? 'sequential'}
+              onChange={(e) =>
+                patch((l) =>
+                  l.type === 'flow'
+                    ? {
+                        ...l,
+                        flowAnimation: {
+                          ...l.flowAnimation,
+                          mode: e.target.value as 'sequential' | 'parallel' | 'instant',
+                        },
+                      }
+                    : l,
+                )
+              }
+            >
+              <option value="sequential">Sequential draw</option>
+              <option value="parallel">Parallel stagger</option>
+              <option value="instant">Instant</option>
+            </select>
+          </Field>
+          <Field label="Step delay">
+            <input
+              type="number"
+              className="inspector-input"
+              step={0.05}
+              min={0}
+              value={layer.flowAnimation?.stepDelay ?? 0.35}
+              onChange={(e) =>
+                patch((l) =>
+                  l.type === 'flow'
+                    ? {
+                        ...l,
+                        flowAnimation: { ...l.flowAnimation, stepDelay: Number(e.target.value) },
+                      }
+                    : l,
+                )
+              }
+            />
+          </Field>
+          <Field label="Line draw">
+            <input
+              type="number"
+              className="inspector-input"
+              step={0.05}
+              min={0}
+              value={layer.flowAnimation?.lineDuration ?? 0.35}
+              onChange={(e) =>
+                patch((l) =>
+                  l.type === 'flow'
+                    ? {
+                        ...l,
+                        flowAnimation: { ...l.flowAnimation, lineDuration: Number(e.target.value) },
+                      }
+                    : l,
+                )
+              }
+            />
+          </Field>
+          <Field label="Node pop">
+            <input
+              type="number"
+              className="inspector-input"
+              step={0.05}
+              min={0}
+              value={layer.flowAnimation?.nodeDuration ?? 0.3}
+              onChange={(e) =>
+                patch((l) =>
+                  l.type === 'flow'
+                    ? {
+                        ...l,
+                        flowAnimation: { ...l.flowAnimation, nodeDuration: Number(e.target.value) },
+                      }
+                    : l,
+                )
+              }
+            />
+          </Field>
+          <div className="flow-inspector-actions">
+            <p className="flow-inspector-hint">
+              {layer.nodes.length} nodes · {layer.edges.length} edges
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setFlowEditorOpen(true)}
+            >
+              Edit flow…
+            </button>
+          </div>
+        </InspectorSection>
+      )}
+
+      {layer.type === 'flow' && (
+        <FlowEditorModal
+          open={flowEditorOpen}
+          onClose={() => setFlowEditorOpen(false)}
+          layer={layer}
+          layerLabel={layer.nodes.length === 1 ? layer.nodes[0].label : `${layer.nodes.length} nodes`}
+          canvasWidth={projectWidth}
+          canvasHeight={projectHeight}
+          onUpdate={(updater) =>
+            patch((current) => (current.type === 'flow' ? updater(current) : current))
+          }
+        />
+      )}
+
+      {layer.type !== 'audio' && layer.type !== 'flow' && (
         <InspectorSection title="Keyframes">
           <KeyframeEditor
             layer={layer}

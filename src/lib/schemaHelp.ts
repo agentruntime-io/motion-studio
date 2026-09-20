@@ -22,8 +22,48 @@ LAYER TYPES
   title     — text, style?: { fontSize, color, align, fontWeight, shadow? }
   overlay   — overlayType: text|image|shape, text?, src?, shape?, style?
   audio     — src, volume?
+  flow      — nodes[], edges[], flowAnimation?, theme?, defaultNodeStyle?
 
-KEYFRAMES (per layer, times are seconds from layer start)
+FLOW LAYER (process / n8n-style diagrams)
+  {
+    "type": "flow",
+    "start": 0, "duration": 8,
+    "defaultNodeStyle": "step",
+    "flowAnimation": {
+      "mode": "sequential",
+      "stepDelay": 0.35,
+      "lineDuration": 0.35,
+      "nodeDuration": 0.3,
+      "sequence": ["n1", "n2", "n3"]
+    },
+    "nodes": [
+      { "id": "n1", "style": "step", "label": "Detect", "number": 1, "x": 120, "y": 320 },
+      { "id": "n2", "style": "card", "label": "PM reviews", "number": 2, "x": 360, "y": 280 },
+      { "id": "n3", "style": "n8n", "label": "HTTP Request", "icon": "🌐", "x": 600, "y": 300 }
+    ],
+    "edges": [
+      { "from": "n1", "to": "n2" },
+      { "from": "n2", "to": "n3" }
+    ]
+  }
+
+  Node styles: step (numbered circle), card (white card + badge), n8n (automation node)
+  Animation: edges draw with SVG stroke-dash, then nodes pop in
+
+  Branching (n8n split):
+    "sequence": ["n1", "n2", "n3", "n4", "n5"]
+    Incoming edges animate automatically before each node appears.
+    Split edges from one node fan out with auto waypoints.
+
+  Explicit edge timing in sequence:
+    "sequence": ["n1", "edge:n1->n2", "n2", "edge:n2->n3", "n3"]
+
+  Custom edge routing:
+    "edges": [{ "from": "a", "to": "b", "points": [{ "x": 500, "y": 200 }] }]
+    Drag the orange waypoint handle in the visual flow editor.
+
+  Visual editor: select flow clip → Properties → drag nodes, Connect mode, Auto sequence
+ (per layer, times are seconds from layer start)
   keyframes: {
     "name": "Ken Burns",
     "tracks": [

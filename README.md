@@ -1,19 +1,28 @@
-# JSON Video Studio
+# Motion Studio
 
-Generate videos in the browser from a JSON timeline definition. Built with **React + Vite + TypeScript**.
+**Browser-based programmable video creation.**
+
+Open source · Runs locally · JSON-driven
+
+Built by [AgentRuntime](https://agentruntime.io) · [GitHub](https://github.com/agentruntime-io/motion-studio)
+
+---
+
+Motion Studio is a local-first video compositor that turns JSON timelines into previewable canvas animations and WebM exports. No cloud rendering, no proprietary project format — just edit JSON, drop assets in a folder, and export.
 
 ## Features
 
 - **Images** — URL, data URL, project files, inline SVG, or local folder
 - **Transitions** — fade, slide, zoom, wipe (in/out)
 - **Animations** — fade, slide, scale, bounce (in/out)
-- **Titles** — styled text layers with shadows
-- **Overlays** — text badges, shapes, image overlays
+- **Keyframes** — property animation over time
+- **Flow diagrams** — step timelines, cards, and branching n8n-style nodes
+- **Titles & overlays** — text, shapes, badges, image overlays
 - **Effects** — blur, brightness, contrast, grayscale, sepia, vignette, glow
 - **Preview** — real-time canvas playback with timeline scrubber
 - **Export** — download as WebM video
 
-## Quick Start
+## Quick start
 
 ```bash
 npm install
@@ -73,9 +82,13 @@ Or use **Open local folder…** to load assets from any directory on disk.
 
 ## Agent skill
 
-See [.cursor/skills/json-video-studio/SKILL.md](.cursor/skills/json-video-studio/SKILL.md).
+For Cursor agents authoring timelines, see [.cursor/skills/json-video-studio/SKILL.md](.cursor/skills/json-video-studio/SKILL.md).
 
 ## Export notes
 
 - Output: **WebM** (VP9/VP8)
 - Export renders frame-by-frame at the specified FPS
+
+## License
+
+[Apache-2.0](LICENSE) © AgentRuntime

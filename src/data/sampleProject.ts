@@ -82,7 +82,7 @@ export const sampleProject: VideoProject = {
     {
       id: 'title-main',
       type: 'title',
-      text: 'JSON Video Studio',
+      text: 'Motion Studio',
       start: 0.5,
       duration: 3,
       x: 0,

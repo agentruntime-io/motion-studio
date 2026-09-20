@@ -37,19 +37,43 @@
   color: white;
 }
 
+.brand-copy {
+  min-width: 0;
+}
+
 .brand h1 {
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.brand p {
+.brand-tagline {
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-top: 0.15rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.brand-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+  opacity: 0.85;
+}
+
+.brand-credit {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+  opacity: 0.75;
+}
+
+.brand-credit a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.brand-credit a:hover {
+  text-decoration: underline;
 }
 
 .project-meta {
@@ -1509,6 +1533,307 @@
   color: var(--text-muted);
   line-height: 1.45;
   margin: 0;
+}
+
+.flow-inspector-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.flow-inspector-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.flow-inspector-actions .btn {
+  width: 100%;
+}
+
+.flow-editor-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.flow-editor-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(96vw, 1180px);
+  height: min(92vh, 820px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.flow-editor-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.flow-editor-modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.flow-editor-modal-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0 0;
+}
+
+.flow-editor-modal-body {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  overflow: hidden;
+}
+
+.flow-editor-expanded {
+  margin-top: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.flow-editor-expanded .flow-editor-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.flow-editor-props-dock {
+  flex-shrink: 0;
+  min-height: 168px;
+  margin-top: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+
+.flow-editor-expanded .flow-editor-props-dock {
+  min-height: 220px;
+}
+
+.flow-editor-props-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.flow-editor-props-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.75rem 0 0;
+  line-height: 1.45;
+}
+
+.flow-editor-expanded .flow-editor-props {
+  max-height: none;
+  overflow: visible;
+}
+
+.flow-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.flow-editor-toolbar,
+.flow-editor-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.flow-editor-add {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.flow-editor-toolbar .btn.active {
+  border-color: #0891b2;
+  color: #0891b2;
+  background: rgba(8, 145, 178, 0.12);
+}
+
+.btn-sm {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.flow-editor-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.flow-editor-canvas-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f1f5f9;
+}
+
+.flow-editor-canvas {
+  position: relative;
+  margin: 0 auto;
+  background: #f8fafc;
+}
+
+.flow-editor-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.flow-editor-edge {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.flow-editor-edge.selected {
+  stroke: #0891b2;
+  stroke-width: 3;
+}
+
+.flow-editor-node {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.flow-editor-node.selected {
+  border-color: #0891b2;
+  box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.25);
+}
+
+.flow-editor-node-step {
+  border-radius: 999px;
+  background: #2563eb;
+  border-color: #1d4ed8;
+  flex-direction: column;
+}
+
+.flow-editor-node-card {
+  border-radius: 12px;
+}
+
+.flow-editor-node-n8n {
+  border-radius: 10px;
+  background: #2d2d2d;
+  border-color: #525252;
+  justify-content: flex-start;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.flow-editor-node-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #334155;
+  text-align: center;
+  padding: 0 4px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.flow-editor-node-step .flow-editor-node-label {
+  color: #ffffff;
+  margin-top: 14px;
+}
+
+.flow-editor-node-n8n .flow-editor-node-label {
+  color: #f8fafc;
+  text-align: left;
+}
+
+.flow-editor-node-badge {
+  position: absolute;
+  top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.flow-editor-node-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.flow-editor-port {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 999px;
+  background: #64748b;
+  pointer-events: none;
+}
+
+.flow-editor-waypoint {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  background: #f97316;
+  cursor: grab;
+  padding: 0;
+  z-index: 5;
+}
+
+.flow-editor-props {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.flow-editor-field {
+  grid-template-columns: 72px 1fr;
 }
 
 .keyframe-graph {

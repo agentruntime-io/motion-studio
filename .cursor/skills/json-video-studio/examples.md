@@ -1,4 +1,4 @@
-# JSON Video Studio — Examples
+# Motion Studio — Examples
 
 ## Minimal slideshow
 

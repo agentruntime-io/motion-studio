@@ -1,7 +1,22 @@
 {
-  "name": "video-editor",
-  "private": true,
-  "version": "0.0.0",
+  "name": "motion-studio",
+  "description": "Browser-based programmable video creation. Open source, runs locally, JSON-driven.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "AgentRuntime",
+  "homepage": "https://github.com/agentruntime-io/motion-studio",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentruntime-io/motion-studio.git"
+  },
+  "keywords": [
+    "video",
+    "json",
+    "canvas",
+    "webm",
+    "animation",
+    "motion-graphics"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",

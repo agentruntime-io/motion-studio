@@ -93,6 +93,10 @@ export function getLayerLabel(layer: Layer): string {
     case 'audio':
       if (!layer.src) return 'Audio'
       return layer.src.split('/').pop()?.split('?')[0] ?? 'Audio'
+    case 'flow':
+      return layer.nodes.length === 1
+        ? layer.nodes[0].label
+        : `Flow (${layer.nodes.length} nodes)`
     default:
       return 'Layer'
   }
@@ -110,6 +114,8 @@ export function getLayerColor(layer: Layer): string {
       return '#475569'
     case 'audio':
       return '#0f766e'
+    case 'flow':
+      return '#0891b2'
     default:
       return '#334155'
   }
@@ -119,6 +125,7 @@ export function getTrackKind(layer: Layer): TrackKind {
   if (layer.type === 'image') return 'video'
   if (layer.type === 'title') return 'title'
   if (layer.type === 'audio') return 'audio'
+  if (layer.type === 'flow') return 'overlay'
   return 'overlay'
 }
 

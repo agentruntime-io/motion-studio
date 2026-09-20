@@ -373,9 +373,16 @@ function App() {
       <header className="app-header">
         <div className="brand">
           <span className="brand-icon">▶</span>
-          <div>
-            <h1>JSON Video Studio</h1>
-            <p>Generate videos from JSON — images, transitions, overlays, animations & effects</p>
+          <div className="brand-copy">
+            <h1>Motion Studio</h1>
+            <p className="brand-tagline">Browser-based programmable video creation.</p>
+            <p className="brand-meta">Open source · Runs locally · JSON-driven</p>
+            <p className="brand-credit">
+              Built by{' '}
+              <a href="https://agentruntime.io" target="_blank" rel="noreferrer">
+                AgentRuntime
+              </a>
+            </p>
           </div>
         </div>
         <div className="header-right">
@@ -494,6 +501,8 @@ function App() {
           <LayerInspector
             layer={selectedLayer}
             layerId={selectedLayerId}
+            projectWidth={project.width}
+            projectHeight={project.height}
             currentTime={currentTime}
             autoKeyframe={autoKeyframe}
             selectedKeyframe={selectedKeyframe}

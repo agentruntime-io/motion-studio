@@ -199,7 +199,7 @@ export function isNumericKeyframeProperty(property: KeyframeProperty): boolean {
 }
 
 export function propertyAllowedOnLayer(layer: Layer, property: KeyframeProperty): boolean {
-  if (layer.type === 'audio') return false
+  if (layer.type === 'audio' || layer.type === 'flow') return false
   if (property === 'color' || property === 'fontSize') {
     return layer.type === 'title' || (layer.type === 'overlay' && layer.overlayType === 'text')
   }

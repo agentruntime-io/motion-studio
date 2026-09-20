@@ -160,7 +160,70 @@ export interface AudioLayer extends BaseLayer {
   volume?: number
 }
 
-export type Layer = ImageLayer | TitleLayer | OverlayLayer | AudioLayer
+export type FlowNodeStyle = 'step' | 'card' | 'n8n'
+
+export interface FlowNode {
+  id: string
+  /** step = numbered circle + label, card = white card + badge, n8n = automation node */
+  style?: FlowNodeStyle
+  label: string
+  subtitle?: string
+  number?: number | string
+  x: number
+  y: number
+  width?: number
+  height?: number
+  /** Emoji or short icon label for n8n nodes */
+  icon?: string
+  /** Image src for thumbnail-style nodes */
+  image?: string
+  color?: string
+}
+
+export interface FlowEdge {
+  from: string
+  to: string
+  /** Optional polyline waypoints between nodes (absolute coords) */
+  points?: { x: number; y: number }[]
+}
+
+export type FlowAnimationMode = 'sequential' | 'parallel' | 'instant'
+
+export interface FlowAnimationConfig {
+  mode?: FlowAnimationMode
+  /** Pause between steps (seconds) */
+  stepDelay?: number
+  /** Edge draw duration (seconds) */
+  lineDuration?: number
+  /** Node reveal duration (seconds) */
+  nodeDuration?: number
+  easing?: EasingType
+  /** Reveal order: node ids and/or edge tokens like "edge:from->to" */
+  sequence?: string[]
+}
+
+export interface FlowTheme {
+  lineColor?: string
+  lineWidth?: number
+  badgeColor?: string
+  cardBackground?: string
+  cardBorder?: string
+  n8nBackground?: string
+  n8nBorder?: string
+  labelColor?: string
+  subtitleColor?: string
+}
+
+export interface FlowLayer extends BaseLayer {
+  type: 'flow'
+  defaultNodeStyle?: FlowNodeStyle
+  nodes: FlowNode[]
+  edges: FlowEdge[]
+  flowAnimation?: FlowAnimationConfig
+  theme?: FlowTheme
+}
+
+export type Layer = ImageLayer | TitleLayer | OverlayLayer | AudioLayer | FlowLayer
 
 export interface VideoProject {
   name?: string

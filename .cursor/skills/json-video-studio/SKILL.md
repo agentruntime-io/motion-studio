@@ -1,16 +1,16 @@
 ---
 name: json-video-studio
 description: >-
-  Build browser-rendered videos from JSON timelines using the JSON Video Studio
-  app (React/Vite canvas compositor). Use when creating video projects, authoring
+  Build browser-rendered videos from JSON timelines using Motion Studio
+  (React/Vite canvas compositor). Use when creating video projects, authoring
   timeline JSON, adding images/SVG/transitions/overlays/animations/effects/keyframes,
   placing assets in projects/ folder, saving or opening project.json, or exporting
-  WebM from the video-editor repo.
+  WebM from the motion-studio repo.
 ---
 
-# JSON Video Studio
+# Motion Studio
 
-Generate videos by authoring a JSON project file consumed by the app at `c:\agentruntime\video-editor`.
+Generate videos by authoring a JSON project file consumed by the Motion Studio app.
 
 ## Quick workflow
 

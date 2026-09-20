@@ -11,6 +11,7 @@ import type { ResolveImageOptions } from './resolveImageSrc'
 import { loadImage } from './assetLoader'
 import { computeLayerTransform } from './animations'
 import { applyCanvasEffects } from './effects'
+import { collectFlowImageSources, drawFlowLayer } from './flowRenderer'
 import { getMotionPathPoints } from './keyframeEngine'
 
 function collectImageSources(layers: Layer[]): string[] {
@@ -19,6 +20,7 @@ function collectImageSources(layers: Layer[]): string[] {
     if (layer.type === 'overlay' && layer.overlayType === 'image' && layer.src) {
       return [layer.src]
     }
+    if (layer.type === 'flow') return collectFlowImageSources(layer)
     return []
   })
 }
@@ -349,6 +351,9 @@ export class VideoRenderer {
           break
         case 'overlay':
           drawOverlayLayer(ctx, layer, this.project, time, this.images)
+          break
+        case 'flow':
+          drawFlowLayer(ctx, layer, this.project, time, this.images)
           break
         case 'audio':
           break
