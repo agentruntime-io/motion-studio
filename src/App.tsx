@@ -369,11 +369,11 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-icon">▶</span>
-          <div className="brand-copy">
-            <h1>Motion Studio</h1>
-            <span className="brand-tagline">Your ideas, in motion.</span>
-          </div>
+          <img
+            src="/logo-white.png"
+            alt="Motion Studio — Built by AgentRuntime"
+            className="brand-logo"
+          />
         </div>
         <div className="header-right">
           <div className="header-history">
