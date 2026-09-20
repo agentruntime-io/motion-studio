@@ -2,7 +2,7 @@ import posthog from 'posthog-js'
 import type { VideoProject } from '../types/project'
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com'
+const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com'
 
 let enabled = false
 
@@ -41,6 +41,7 @@ export function initAnalytics() {
 
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
+    defaults: '2026-05-30',
     person_profiles: 'identified_only',
     capture_pageview: true,
     capture_pageleave: true,
