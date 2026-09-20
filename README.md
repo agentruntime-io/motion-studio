@@ -82,7 +82,7 @@ Or use **Open local folder…** to load assets from any directory on disk.
 
 ## Agent skill
 
-For Cursor agents authoring timelines, see [.cursor/skills/json-video-studio/SKILL.md](.cursor/skills/json-video-studio/SKILL.md).
+For Cursor agents authoring timelines, see [.cursor/skills/motion-studio/SKILL.md](.cursor/skills/motion-studio/SKILL.md).
 
 ## Export notes
 

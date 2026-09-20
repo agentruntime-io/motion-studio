@@ -1,7 +1,5 @@
 import type { VideoProject } from '../types/project'
 import { createGradientDataUrl } from '../engine/assetLoader'
-import { normalizeProjectKeyframes } from '../lib/keyframes'
-
 const W = 1280
 const H = 720
 
@@ -274,5 +272,5 @@ export function parseProjectJson(json: string): VideoProject {
     throw new Error('Invalid project JSON: requires width, height, fps, duration, and layers[]')
   }
 
-  return normalizeProjectKeyframes(project)
+  return project
 }

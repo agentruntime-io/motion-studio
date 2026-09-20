@@ -216,7 +216,7 @@ function App() {
             layer.duration,
           )
           if (!next) return layer
-          return { ...layer, keyframes: next, workflow: undefined }
+          return { ...layer, keyframes: next }
         }),
         true,
       )
@@ -290,13 +290,10 @@ function App() {
           selectedKeyframe.t,
         )
         if (!next) {
-          const { keyframes: _k, workflow: _w, ...rest } = layer as Layer & {
-            keyframes?: NonNullable<typeof next>
-            workflow?: NonNullable<typeof next>
-          }
+          const { keyframes: _k, ...rest } = layer
           return rest
         }
-        return { ...layer, keyframes: next, workflow: undefined }
+        return { ...layer, keyframes: next }
       }),
       true,
     )

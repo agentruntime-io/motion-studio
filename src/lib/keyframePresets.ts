@@ -187,9 +187,3 @@ export const KEYFRAME_PRESETS: { id: string; label: string; keyframes: LayerKeyf
     keyframes: { tracks: [] },
   },
 ]
-
-/** @deprecated */
-export const WORKFLOW_PRESETS = KEYFRAME_PRESETS.map((preset) => ({
-  ...preset,
-  workflow: preset.keyframes,
-}))

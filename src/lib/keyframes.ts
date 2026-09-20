@@ -4,31 +4,10 @@ import type {
   KeyframeValue,
   Layer,
   LayerKeyframes,
-  VideoProject,
 } from '../types/project'
 
 export function getLayerKeyframes(layer: Layer): LayerKeyframes | undefined {
-  return layer.keyframes ?? layer.workflow
-}
-
-export function normalizeLayerKeyframes(layer: Layer): Layer {
-  const legacy = layer.workflow
-  if (!layer.keyframes && legacy) {
-    const { workflow: _removed, ...rest } = layer as Layer & { workflow?: LayerKeyframes }
-    return { ...rest, keyframes: legacy }
-  }
-  if (layer.workflow && layer.keyframes) {
-    const { workflow: _removed, ...rest } = layer as Layer & { workflow?: LayerKeyframes }
-    return rest
-  }
-  return layer
-}
-
-export function normalizeProjectKeyframes(project: VideoProject): VideoProject {
-  return {
-    ...project,
-    layers: project.layers.map(normalizeLayerKeyframes),
-  }
+  return layer.keyframes
 }
 
 export function clampLayerKeyframes(layer: Layer): Layer {
@@ -48,14 +27,11 @@ export function clampLayerKeyframes(layer: Layer): Layer {
   }
 
   if (clamped.tracks.length === 0) {
-    const { keyframes: _k, workflow: _w, ...rest } = layer as Layer & {
-      keyframes?: LayerKeyframes
-      workflow?: LayerKeyframes
-    }
+    const { keyframes: _k, ...rest } = layer
     return rest
   }
 
-  return { ...layer, keyframes: clamped, workflow: undefined }
+  return { ...layer, keyframes: clamped }
 }
 
 export function countKeyframes(keyframes?: LayerKeyframes): number {
@@ -274,5 +250,5 @@ export function pasteKeyframesOntoLayer(
     }
   }
 
-  return { ...layer, keyframes: merged, workflow: undefined }
+  return { ...layer, keyframes: merged }
 }

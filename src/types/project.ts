@@ -75,15 +75,6 @@ export interface LayerKeyframes {
   tracks: KeyframeTrack[]
 }
 
-/** @deprecated Use LayerKeyframes */
-export type WorkflowAnimation = LayerKeyframes
-/** @deprecated Use KeyframeProperty */
-export type WorkflowProperty = KeyframeProperty
-/** @deprecated Use Keyframe */
-export type WorkflowKeyframe = Keyframe
-/** @deprecated Use KeyframeTrack */
-export type WorkflowTrack = KeyframeTrack
-
 export interface EffectConfig {
   type: EffectType
   value?: number
@@ -128,8 +119,6 @@ export interface BaseLayer {
   transition?: TransitionConfig
   animation?: AnimationConfig
   keyframes?: LayerKeyframes
-  /** @deprecated Use keyframes */
-  workflow?: LayerKeyframes
   effects?: EffectConfig[]
 }
 

@@ -7,7 +7,7 @@ export interface ProjectLoadContext {
 
 export const DEFAULT_PROJECT_PATH = 'projects/demo-reel'
 
-export const PROJECT_PATH_STORAGE_KEY = 'json-video-studio.projectPath'
+export const PROJECT_PATH_STORAGE_KEY = 'motion-studio.projectPath'
 
 declare const __WORKSPACE_ROOT__: string
 

@@ -51,16 +51,12 @@ export function KeyframeEditor({
 
     patch((current) => {
       if (preset.keyframes.tracks.length === 0) {
-        const { keyframes: _k, workflow: _w, ...rest } = current as Layer & {
-          keyframes?: typeof preset.keyframes
-          workflow?: typeof preset.keyframes
-        }
+        const { keyframes: _k, ...rest } = current
         return rest
       }
       return {
         ...current,
         keyframes: scaleKeyframesToDuration(preset.keyframes, current.duration),
-        workflow: undefined,
       }
     })
   }
@@ -74,7 +70,7 @@ export function KeyframeEditor({
         value: value ?? getKeyframeValueAtTime(current, property, localTime),
         easing: 'easeInOut',
       })
-      return { ...current, keyframes: next, workflow: undefined }
+      return { ...current, keyframes: next }
     })
     onSelectKeyframe({ layerId, property, t: localTime })
   }
@@ -87,13 +83,10 @@ export function KeyframeEditor({
     patch((current) => {
       const next = removeKeyframe(getLayerKeyframes(current), property, time)
       if (!next) {
-        const { keyframes: _k, workflow: _w, ...rest } = current as Layer & {
-          keyframes?: NonNullable<typeof next>
-          workflow?: NonNullable<typeof next>
-        }
+        const { keyframes: _k, ...rest } = current
         return rest
       }
-      return { ...current, keyframes: next, workflow: undefined }
+      return { ...current, keyframes: next }
     })
     if (
       selectedKeyframe?.layerId === layerId &&
@@ -201,7 +194,6 @@ export function KeyframeEditor({
                               ...keyframe,
                               t: Math.max(0, Math.min(layer.duration, Number(e.target.value))),
                             }),
-                            workflow: undefined,
                           }
                         })
                       }
@@ -219,7 +211,6 @@ export function KeyframeEditor({
                               ...keyframe,
                               value: Number(e.target.value),
                             }),
-                            workflow: undefined,
                           }))
                         }
                       />
@@ -235,7 +226,6 @@ export function KeyframeEditor({
                               ...keyframe,
                               value: e.target.value,
                             }),
-                            workflow: undefined,
                           }))
                         }
                       />
@@ -250,7 +240,6 @@ export function KeyframeEditor({
                             ...keyframe,
                             easing: e.target.value as EasingType,
                           }),
-                          workflow: undefined,
                         }))
                       }
                     >
@@ -319,5 +308,5 @@ export function maybeAutoKeyframeLayer(
     value,
     easing: 'easeInOut',
   })
-  return { ...layer, keyframes: next, workflow: undefined }
+  return { ...layer, keyframes: next }
 }

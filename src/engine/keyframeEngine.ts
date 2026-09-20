@@ -228,5 +228,5 @@ export function upsertKeyframeAtPlayhead(
     value: value ?? getKeyframeValueAtTime(layer, property, localTime),
     easing: 'easeInOut',
   })
-  return { ...layer, keyframes: next, workflow: undefined }
+  return { ...layer, keyframes: next }
 }

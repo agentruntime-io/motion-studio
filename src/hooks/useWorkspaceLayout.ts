@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 
-const STORAGE_KEY = 'json-video-studio.layout'
+const STORAGE_KEY = 'motion-studio.layout'
 
 interface LayoutState {
   propertiesWidth: number

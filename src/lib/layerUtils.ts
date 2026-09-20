@@ -4,8 +4,6 @@ import type {
   TransitionType,
   VideoProject,
 } from '../types/project'
-import { normalizeLayerKeyframes, normalizeProjectKeyframes } from './keyframes'
-
 export const TRANSITION_OPTIONS: TransitionType[] = [
   'fade',
   'slideLeft',
@@ -64,15 +62,13 @@ export function getLayerId(layer: Layer, index: number): string {
 }
 
 export function ensureLayerIds(project: VideoProject): VideoProject {
-  return normalizeProjectKeyframes({
+  return {
     ...project,
-    layers: project.layers.map((layer, index) =>
-      normalizeLayerKeyframes({
-        ...layer,
-        id: getLayerId(layer, index),
-      }),
-    ),
-  })
+    layers: project.layers.map((layer, index) => ({
+      ...layer,
+      id: getLayerId(layer, index),
+    })),
+  }
 }
 
 export function getLayerLabel(layer: Layer): string {

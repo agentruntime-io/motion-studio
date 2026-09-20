@@ -85,37 +85,71 @@ Files: `projects/slideshow/slide1.jpg`, `projects/slideshow/slide2.jpg`
 }
 ```
 
-## Mixed sources (URL + project file)
+## Flow diagram (step timeline)
 
 ```json
 {
-  "projectPath": "projects/mixed",
+  "name": "Process Flow",
+  "projectPath": "projects/process",
   "width": 1280,
   "height": 720,
   "fps": 30,
-  "duration": 6,
+  "duration": 10,
+  "backgroundColor": "#0f172a",
   "layers": [
     {
-      "type": "image",
-      "src": "https://picsum.photos/1280/720",
+      "type": "flow",
       "start": 0,
-      "duration": 6,
-      "width": 1280,
-      "height": 720,
-      "transition": { "in": "zoomIn", "duration": 0.8 }
-    },
-    {
-      "type": "overlay",
-      "overlayType": "image",
-      "src": "badge.svg",
-      "start": 1,
-      "duration": 4,
-      "x": 50,
-      "y": 50,
-      "width": 100,
-      "height": 100,
-      "zIndex": 5
+      "duration": 8,
+      "defaultNodeStyle": "step",
+      "flowAnimation": {
+        "mode": "sequential",
+        "stepDelay": 0.4,
+        "lineDuration": 0.35,
+        "nodeDuration": 0.3,
+        "sequence": ["n1", "n2", "n3", "n4"]
+      },
+      "nodes": [
+        { "id": "n1", "style": "step", "label": "Detect", "number": 1, "x": 100, "y": 360 },
+        { "id": "n2", "style": "step", "label": "Triage", "number": 2, "x": 340, "y": 360 },
+        { "id": "n3", "style": "card", "label": "PM reviews", "number": 3, "x": 580, "y": 320 },
+        { "id": "n4", "style": "n8n", "label": "Notify Slack", "icon": "💬", "x": 820, "y": 340 }
+      ],
+      "edges": [
+        { "from": "n1", "to": "n2" },
+        { "from": "n2", "to": "n3" },
+        { "from": "n3", "to": "n4" }
+      ]
     }
+  ]
+}
+```
+
+## Branching flow (n8n split)
+
+```json
+{
+  "type": "flow",
+  "start": 0,
+  "duration": 12,
+  "defaultNodeStyle": "n8n",
+  "flowAnimation": {
+    "mode": "sequential",
+    "sequence": ["trigger", "check", "path-a", "path-b", "merge"]
+  },
+  "nodes": [
+    { "id": "trigger", "label": "Webhook", "icon": "⚡", "x": 120, "y": 360 },
+    { "id": "check", "label": "IF", "icon": "?", "x": 320, "y": 360 },
+    { "id": "path-a", "label": "Email", "icon": "✉", "x": 520, "y": 260 },
+    { "id": "path-b", "label": "Slack", "icon": "💬", "x": 520, "y": 460 },
+    { "id": "merge", "label": "Done", "icon": "✓", "x": 720, "y": 360 }
+  ],
+  "edges": [
+    { "from": "trigger", "to": "check" },
+    { "from": "check", "to": "path-a" },
+    { "from": "check", "to": "path-b" },
+    { "from": "path-a", "to": "merge" },
+    { "from": "path-b", "to": "merge" }
   ]
 }
 ```
@@ -157,11 +191,11 @@ Files: `projects/slideshow/slide1.jpg`, `projects/slideshow/slide2.jpg`
 }
 ```
 
-## Agent workflow
+## Agent checklist
 
-1. Copy template: `cp -r .cursor/skills/json-video-studio/template/demo-reel projects/my-video`
+1. Copy template: `cp -r .cursor/skills/motion-studio/template/demo-reel projects/my-video`
 2. Edit `projects/my-video/project.json` and add assets
 3. In app: **Open** or set folder → **Reload project.json**
-4. Edit timeline / keyframes in UI
+4. Edit timeline / keyframes / flow in UI
 5. **Save** (Ctrl+S) → `projects/my-video`
 6. **Export** WebM
