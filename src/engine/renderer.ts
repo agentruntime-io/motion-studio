@@ -2,6 +2,7 @@ import type {
   ImageLayer,
   Layer,
   OverlayLayer,
+  OverlayStyle,
   TextStyle,
   TitleLayer,
   VideoProject,
@@ -10,6 +11,7 @@ import type { ResolveImageOptions } from './resolveImageSrc'
 import { loadImage } from './assetLoader'
 import { computeLayerTransform } from './animations'
 import { applyCanvasEffects } from './effects'
+import { getMotionPathPoints } from './keyframeEngine'
 
 function collectImageSources(layers: Layer[]): string[] {
   return layers.flatMap((layer) => {
@@ -31,6 +33,10 @@ function getLayerBounds(
     width: layer.width ?? project.width,
     height: layer.height ?? project.height,
   }
+}
+
+function mergeTextStyle(base: TextStyle | undefined, overrides: TextStyle): TextStyle {
+  return { ...base, ...overrides }
 }
 
 function applyTextStyle(ctx: CanvasRenderingContext2D, style: TextStyle | undefined): void {
@@ -59,7 +65,7 @@ function drawImageLayer(
   image: HTMLImageElement,
 ): void {
   const bounds = getLayerBounds(layer, project)
-  const transform = computeLayerTransform(
+  const { transform, bounds: keyBounds } = computeLayerTransform(
     time,
     layer.start,
     layer.duration,
@@ -70,12 +76,15 @@ function drawImageLayer(
     project.height,
     layer.transition,
     layer.animation,
+    layer,
   )
 
   if (transform.opacity <= 0) return
 
-  const centerX = bounds.x + bounds.width / 2 + transform.x
-  const centerY = bounds.y + bounds.height / 2 + transform.y
+  const width = keyBounds.width ?? bounds.width
+  const height = keyBounds.height ?? bounds.height
+  const centerX = bounds.x + width / 2 + transform.x
+  const centerY = bounds.y + height / 2 + transform.y
 
   applyCanvasEffects(ctx, layer.effects, () => {
     ctx.save()
@@ -86,25 +95,25 @@ function drawImageLayer(
     }
 
     ctx.translate(centerX, centerY)
-    ctx.rotate(((layer.rotation ?? 0) * Math.PI) / 180)
+    ctx.rotate(((layer.rotation ?? 0) + (transform.rotation ?? 0)) * Math.PI / 180)
     ctx.scale(transform.scaleX, transform.scaleY)
-    ctx.translate(-bounds.width / 2, -bounds.height / 2)
+    ctx.translate(-width / 2, -height / 2)
 
     const fit = layer.fit ?? 'cover'
-    let drawWidth = bounds.width
-    let drawHeight = bounds.height
+    let drawWidth = width
+    let drawHeight = height
     let drawX = 0
     let drawY = 0
 
     if (fit === 'cover' || fit === 'contain') {
       const scale =
         fit === 'cover'
-          ? Math.max(bounds.width / image.width, bounds.height / image.height)
-          : Math.min(bounds.width / image.width, bounds.height / image.height)
+          ? Math.max(width / image.width, height / image.height)
+          : Math.min(width / image.width, height / image.height)
       drawWidth = image.width * scale
       drawHeight = image.height * scale
-      drawX = (bounds.width - drawWidth) / 2
-      drawY = (bounds.height - drawHeight) / 2
+      drawX = (width - drawWidth) / 2
+      drawY = (height - drawHeight) / 2
     }
 
     ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
@@ -119,7 +128,7 @@ function drawTitleLayer(
   time: number,
 ): void {
   const bounds = getLayerBounds(layer, project)
-  const transform = computeLayerTransform(
+  const { transform, bounds: keyBounds, style } = computeLayerTransform(
     time,
     layer.start,
     layer.duration,
@@ -130,22 +139,27 @@ function drawTitleLayer(
     project.height,
     layer.transition,
     layer.animation,
+    layer,
   )
 
   if (transform.opacity <= 0) return
+
+  const width = keyBounds.width ?? bounds.width
+  const height = keyBounds.height ?? bounds.height
+  const mergedStyle = mergeTextStyle(layer.style, style)
 
   applyCanvasEffects(ctx, layer.effects, () => {
     ctx.save()
     ctx.globalAlpha = transform.opacity
 
-    const centerX = bounds.x + bounds.width / 2 + transform.x
-    const centerY = bounds.y + bounds.height / 2 + transform.y
+    const centerX = bounds.x + width / 2 + transform.x
+    const centerY = bounds.y + height / 2 + transform.y
 
     ctx.translate(centerX, centerY)
-    ctx.rotate(((layer.rotation ?? 0) * Math.PI) / 180)
+    ctx.rotate(((layer.rotation ?? 0) + (transform.rotation ?? 0)) * Math.PI / 180)
     ctx.scale(transform.scaleX, transform.scaleY)
 
-    applyTextStyle(ctx, layer.style)
+    applyTextStyle(ctx, mergedStyle)
     ctx.fillText(layer.text, 0, 0)
     ctx.restore()
   })
@@ -159,7 +173,7 @@ function drawOverlayLayer(
   images: Map<string, HTMLImageElement>,
 ): void {
   const bounds = getLayerBounds(layer, project)
-  const transform = computeLayerTransform(
+  const { transform, bounds: keyBounds, style: keyStyle } = computeLayerTransform(
     time,
     layer.start,
     layer.duration,
@@ -170,9 +184,14 @@ function drawOverlayLayer(
     project.height,
     layer.transition,
     layer.animation,
+    layer,
   )
 
   if (transform.opacity <= 0) return
+
+  const width = keyBounds.width ?? bounds.width
+  const height = keyBounds.height ?? bounds.height
+  const style: OverlayStyle = { ...layer.style, ...keyStyle }
 
   applyCanvasEffects(ctx, layer.effects, () => {
     ctx.save()
@@ -180,22 +199,21 @@ function drawOverlayLayer(
 
     const x = bounds.x + transform.x
     const y = bounds.y + transform.y
-    const style = layer.style ?? {}
 
-    ctx.translate(x + bounds.width / 2, y + bounds.height / 2)
-    ctx.rotate(((layer.rotation ?? 0) * Math.PI) / 180)
+    ctx.translate(x + width / 2, y + height / 2)
+    ctx.rotate(((layer.rotation ?? 0) + (transform.rotation ?? 0)) * Math.PI / 180)
     ctx.scale(transform.scaleX, transform.scaleY)
-    ctx.translate(-bounds.width / 2, -bounds.height / 2)
+    ctx.translate(-width / 2, -height / 2)
 
     if (layer.overlayType === 'shape') {
       ctx.fillStyle = style.backgroundColor ?? 'rgba(255,255,255,0.2)'
       if (layer.shape === 'circle') {
         ctx.beginPath()
-        ctx.arc(bounds.width / 2, bounds.height / 2, Math.min(bounds.width, bounds.height) / 2, 0, Math.PI * 2)
+        ctx.arc(width / 2, height / 2, Math.min(width, height) / 2, 0, Math.PI * 2)
         ctx.fill()
       } else {
         const radius = style.borderRadius ?? 8
-        roundRect(ctx, 0, 0, bounds.width, bounds.height, radius)
+        roundRect(ctx, 0, 0, width, height, radius)
         ctx.fill()
         if (style.borderWidth) {
           ctx.strokeStyle = style.borderColor ?? '#ffffff'
@@ -206,21 +224,19 @@ function drawOverlayLayer(
     }
 
     if (layer.overlayType === 'text' && layer.text) {
-      const padding = style.padding ?? 16
       if (style.backgroundColor) {
         ctx.fillStyle = style.backgroundColor
-        roundRect(ctx, 0, 0, bounds.width, bounds.height, style.borderRadius ?? 8)
+        roundRect(ctx, 0, 0, width, height, style.borderRadius ?? 8)
         ctx.fill()
       }
       applyTextStyle(ctx, style)
-      ctx.fillText(layer.text, bounds.width / 2, bounds.height / 2)
-      void padding
+      ctx.fillText(layer.text, width / 2, height / 2)
     }
 
     if (layer.overlayType === 'image' && layer.src) {
       const image = images.get(layer.src)
       if (image) {
-        ctx.drawImage(image, 0, 0, bounds.width, bounds.height)
+        ctx.drawImage(image, 0, 0, width, height)
       }
     }
 
@@ -249,6 +265,38 @@ function roundRect(
   ctx.closePath()
 }
 
+export function drawMotionPath(
+  ctx: CanvasRenderingContext2D,
+  layer: Layer,
+  project: VideoProject,
+): void {
+  const points = getMotionPathPoints(layer)
+  if (points.length < 2) return
+
+  ctx.save()
+  ctx.strokeStyle = 'rgba(79, 209, 197, 0.85)'
+  ctx.fillStyle = '#4fd1c5'
+  ctx.lineWidth = 2
+  ctx.setLineDash([6, 4])
+  ctx.beginPath()
+  points.forEach((point, index) => {
+    const cx = point.x + (layer.width ?? project.width) / 2
+    const cy = point.y + (layer.height ?? project.height) / 2
+    if (index === 0) ctx.moveTo(cx, cy)
+    else ctx.lineTo(cx, cy)
+  })
+  ctx.stroke()
+  ctx.setLineDash([])
+  points.forEach((point) => {
+    const cx = point.x + (layer.width ?? project.width) / 2
+    const cy = point.y + (layer.height ?? project.height) / 2
+    ctx.beginPath()
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2)
+    ctx.fill()
+  })
+  ctx.restore()
+}
+
 export class VideoRenderer {
   private project: VideoProject
   private images = new Map<string, HTMLImageElement>()
@@ -272,7 +320,11 @@ export class VideoRenderer {
     this.loaded = true
   }
 
-  renderFrame(ctx: CanvasRenderingContext2D, time: number): void {
+  renderFrame(
+    ctx: CanvasRenderingContext2D,
+    time: number,
+    options?: { motionPathLayer?: Layer | null },
+  ): void {
     if (!this.loaded) return
 
     const { width, height, backgroundColor = '#000000', layers } = this.project
@@ -301,6 +353,10 @@ export class VideoRenderer {
         case 'audio':
           break
       }
+    }
+
+    if (options?.motionPathLayer) {
+      drawMotionPath(ctx, options.motionPathLayer, this.project)
     }
   }
 

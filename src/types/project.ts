@@ -44,6 +44,46 @@ export interface AnimationConfig {
   easing?: EasingType
 }
 
+export type KeyframeProperty =
+  | 'opacity'
+  | 'x'
+  | 'y'
+  | 'scale'
+  | 'rotation'
+  | 'width'
+  | 'height'
+  | 'color'
+  | 'fontSize'
+  | 'backgroundColor'
+
+export type KeyframeValue = number | string
+
+export interface Keyframe {
+  /** Seconds from layer start */
+  t: number
+  value: KeyframeValue
+  easing?: EasingType
+}
+
+export interface KeyframeTrack {
+  property: KeyframeProperty
+  keyframes: Keyframe[]
+}
+
+export interface LayerKeyframes {
+  name?: string
+  tracks: KeyframeTrack[]
+}
+
+/** @deprecated Use LayerKeyframes */
+export type WorkflowAnimation = LayerKeyframes
+/** @deprecated Use KeyframeProperty */
+export type WorkflowProperty = KeyframeProperty
+/** @deprecated Use Keyframe */
+export type WorkflowKeyframe = Keyframe
+/** @deprecated Use KeyframeTrack */
+export type WorkflowTrack = KeyframeTrack
+
 export interface EffectConfig {
   type: EffectType
   value?: number
@@ -87,6 +127,9 @@ export interface BaseLayer {
   rotation?: number
   transition?: TransitionConfig
   animation?: AnimationConfig
+  keyframes?: LayerKeyframes
+  /** @deprecated Use keyframes */
+  workflow?: LayerKeyframes
   effects?: EffectConfig[]
 }
 
@@ -137,5 +180,23 @@ export interface LayerTransform {
   y: number
   scaleX: number
   scaleY: number
+  rotation?: number
   clipPath?: Path2D
+}
+
+export interface KeyframeStyleOverrides {
+  color?: string
+  fontSize?: number
+  backgroundColor?: string
+}
+
+export interface KeyframeBoundsOverrides {
+  width?: number
+  height?: number
+}
+
+export interface SelectedKeyframeRef {
+  layerId: string
+  property: KeyframeProperty
+  t: number
 }

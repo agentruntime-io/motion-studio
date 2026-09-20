@@ -2,11 +2,14 @@ import type {
   AnimationConfig,
   AnimationType,
   EasingType,
+  Layer,
   LayerTransform,
   TransitionType,
 } from '../types/project'
 import { applyEasing, bounceOut } from './easing'
 import { applyTransition } from './transitions'
+import { applyLayerKeyframes } from './keyframeEngine'
+import { getLayerKeyframes } from '../lib/keyframes'
 
 export function computeLayerTransform(
   time: number,
@@ -19,7 +22,8 @@ export function computeLayerTransform(
   canvasHeight: number,
   transition?: { in?: TransitionType; out?: TransitionType; duration?: number },
   animation?: AnimationConfig,
-): LayerTransform {
+  layer?: Layer,
+): { transform: LayerTransform; bounds: { width?: number; height?: number }; style: { color?: string; fontSize?: number; backgroundColor?: string } } {
   const end = start + duration
   const transitionDuration = transition?.duration ?? 0.5
   const animationDuration = animation?.duration ?? 0.6
@@ -34,7 +38,11 @@ export function computeLayerTransform(
   }
 
   if (time < start || time > end) {
-    return { ...transform, opacity: 0 }
+    return {
+      transform: { ...transform, opacity: 0 },
+      bounds: {},
+      style: {},
+    }
   }
 
   const localTime = time - start
@@ -60,7 +68,11 @@ export function computeLayerTransform(
     transform = mergeTransform(transform, delta)
   }
 
-  return transform
+  const keyframed = layer
+    ? applyLayerKeyframes(transform, time, layer, baseOpacity, getLayerKeyframes(layer))
+    : { transform, bounds: {}, style: {} }
+
+  return keyframed
 }
 
 function applyTransitionDelta(

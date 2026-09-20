@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { VideoProject } from '../types/project'
+import type { Layer, VideoProject } from '../types/project'
 import type { ProjectLoadContext } from '../lib/projectContext'
 import { buildResolveOptions } from '../lib/projectContext'
 import { createRenderer, VideoRenderer } from '../engine/renderer'
+
+export interface RenderFrameOptions {
+  motionPathLayer?: Layer | null
+}
 
 export function useVideoRenderer(project: VideoProject | null, context?: ProjectLoadContext) {
   const [ready, setReady] = useState(false)
@@ -37,9 +41,12 @@ export function useVideoRenderer(project: VideoProject | null, context?: Project
     }
   }, [project, contextKey])
 
-  const renderFrame = useCallback((ctx: CanvasRenderingContext2D, time: number) => {
-    rendererRef.current?.renderFrame(ctx, time)
-  }, [])
+  const renderFrame = useCallback(
+    (ctx: CanvasRenderingContext2D, time: number, options?: RenderFrameOptions) => {
+      rendererRef.current?.renderFrame(ctx, time, options)
+    },
+    [],
+  )
 
   const reload = useCallback(async () => {
     if (!project) return

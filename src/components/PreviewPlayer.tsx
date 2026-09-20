@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import type { VideoProject } from '../types/project'
+import type { Layer, VideoProject } from '../types/project'
+import type { RenderFrameOptions } from '../hooks/useVideoRenderer'
 
 export interface PreviewPlayerHandle {
   getCanvas: () => HTMLCanvasElement | null
@@ -8,7 +9,8 @@ export interface PreviewPlayerHandle {
 interface PreviewPlayerProps {
   project: VideoProject
   ready: boolean
-  renderFrame: (ctx: CanvasRenderingContext2D, time: number) => void
+  renderFrame: (ctx: CanvasRenderingContext2D, time: number, options?: RenderFrameOptions) => void
+  motionPathLayer?: Layer | null
   prerenderUrl?: string | null
   usePrerenderPreview?: boolean
   currentTime?: number
@@ -29,6 +31,7 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
       project,
       ready,
       renderFrame,
+      motionPathLayer,
       prerenderUrl,
       usePrerenderPreview,
       currentTime: controlledTime,
@@ -69,9 +72,9 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
         if (!canvas) return
         const ctx = canvas.getContext('2d')
         if (!ctx) return
-        renderFrame(ctx, time)
+        renderFrame(ctx, time, { motionPathLayer })
       },
-      [renderFrame],
+      [motionPathLayer, renderFrame],
     )
 
     const syncVideoTime = useCallback((time: number) => {

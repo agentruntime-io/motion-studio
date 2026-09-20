@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { JsonEditor } from './JsonEditor'
+import { JsonSchemaReference } from './JsonSchemaReference'
 import { ProjectPathPanel } from './ProjectPathPanel'
 
 interface JsonPanelProps {
@@ -71,6 +72,7 @@ export function JsonPanel({
             onLocalFolderLoaded={onLocalFolderLoaded}
             onError={onError}
           />
+          <JsonSchemaReference />
           <JsonEditor
             value={jsonText}
             onChange={onChange}

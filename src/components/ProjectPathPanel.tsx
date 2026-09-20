@@ -144,8 +144,9 @@ export function ProjectPathPanel({
           className="btn btn-ghost"
           onClick={() => folderInputRef.current?.click()}
           disabled={loading}
+          title="Import a local folder with assets and project.json"
         >
-          Open local folder…
+          Import folder…
         </button>
         <input
           ref={folderInputRef}

@@ -1,14 +1,30 @@
-import type { Layer } from '../types/project'
+import type { KeyframeProperty, KeyframeValue, Layer, SelectedKeyframeRef } from '../types/project'
 import type { TransitionType, AnimationType } from '../types/project'
+import { KeyframeEditor, maybeAutoKeyframeLayer } from './KeyframeEditor'
 
 interface LayerInspectorProps {
   layer: Layer | null
   layerId: string | null
+  currentTime: number
+  autoKeyframe: boolean
+  selectedKeyframe: SelectedKeyframeRef | null
+  onSelectKeyframe: (ref: SelectedKeyframeRef | null) => void
+  onToggleAutoKeyframe: () => void
   onUpdate: (layerId: string, updater: (layer: Layer) => Layer) => void
   onDelete: (layerId: string) => void
 }
 
-export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInspectorProps) {
+export function LayerInspector({
+  layer,
+  layerId,
+  currentTime,
+  autoKeyframe,
+  selectedKeyframe,
+  onSelectKeyframe,
+  onToggleAutoKeyframe,
+  onUpdate,
+  onDelete,
+}: LayerInspectorProps) {
   if (!layer || !layerId) {
     return (
       <div className="layer-inspector layer-inspector-empty">
@@ -18,8 +34,25 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
   }
 
   const patch = (updater: (layer: Layer) => Layer) => onUpdate(layerId, updater)
+  const localTime = Math.max(0, Math.min(layer.duration, currentTime - layer.start))
+  const inClip = currentTime >= layer.start && currentTime <= layer.start + layer.duration
   const textStyle =
     layer.type === 'title' || layer.type === 'overlay' ? layer.style : undefined
+
+  const patchAuto = (
+    updater: (layer: Layer) => Layer,
+    autoProps?: { property: KeyframeProperty; getValue: (layer: Layer) => KeyframeValue }[],
+  ) => {
+    patch((current) => {
+      let next = updater(current)
+      if (autoKeyframe && inClip && autoProps) {
+        for (const { property, getValue } of autoProps) {
+          next = maybeAutoKeyframeLayer(next, property, localTime, getValue(next), true)
+        }
+      }
+      return next
+    })
+  }
 
   return (
     <div className="layer-inspector">
@@ -170,6 +203,96 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
         </Field>
       </InspectorSection>
 
+      {layer.type !== 'audio' && (
+        <InspectorSection title="Transform">
+          <Field label="Opacity">
+            <div className="inspector-range-row">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={layer.opacity ?? 1}
+                onChange={(e) =>
+                  patchAuto(
+                    (l) => ({ ...l, opacity: Number(e.target.value) }),
+                    [{ property: 'opacity', getValue: (l) => l.opacity ?? 1 }],
+                  )
+                }
+              />
+              <span className="inspector-range-value">{(layer.opacity ?? 1).toFixed(2)}</span>
+            </div>
+          </Field>
+          <Field label="X">
+            <input
+              type="number"
+              className="inspector-input"
+              value={layer.x ?? 0}
+              onChange={(e) =>
+                patchAuto(
+                  (l) => ({ ...l, x: Number(e.target.value) }),
+                  [{ property: 'x', getValue: (l) => l.x ?? 0 }],
+                )
+              }
+            />
+          </Field>
+          <Field label="Y">
+            <input
+              type="number"
+              className="inspector-input"
+              value={layer.y ?? 0}
+              onChange={(e) =>
+                patchAuto(
+                  (l) => ({ ...l, y: Number(e.target.value) }),
+                  [{ property: 'y', getValue: (l) => l.y ?? 0 }],
+                )
+              }
+            />
+          </Field>
+          <Field label="Width">
+            <input
+              type="number"
+              className="inspector-input"
+              min={0}
+              value={layer.width ?? 0}
+              onChange={(e) =>
+                patchAuto(
+                  (l) => ({ ...l, width: Number(e.target.value) }),
+                  [{ property: 'width', getValue: (l) => l.width ?? 0 }],
+                )
+              }
+            />
+          </Field>
+          <Field label="Height">
+            <input
+              type="number"
+              className="inspector-input"
+              min={0}
+              value={layer.height ?? 0}
+              onChange={(e) =>
+                patchAuto(
+                  (l) => ({ ...l, height: Number(e.target.value) }),
+                  [{ property: 'height', getValue: (l) => l.height ?? 0 }],
+                )
+              }
+            />
+          </Field>
+          <Field label="Rotation">
+            <input
+              type="number"
+              className="inspector-input"
+              value={layer.rotation ?? 0}
+              onChange={(e) =>
+                patchAuto(
+                  (l) => ({ ...l, rotation: Number(e.target.value) }),
+                  [{ property: 'rotation', getValue: (l) => l.rotation ?? 0 }],
+                )
+              }
+            />
+          </Field>
+        </InspectorSection>
+      )}
+
       {(layer.type === 'title' || (layer.type === 'overlay' && layer.overlayType === 'text')) && (
         <InspectorSection title="Text">
           <Field label="Content">
@@ -192,10 +315,12 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
                 type="color"
                 value={normalizeColor(textStyle?.color ?? '#ffffff')}
                 onChange={(e) =>
-                  patch((l) =>
-                    l.type === 'title' || l.type === 'overlay'
-                      ? { ...l, style: { ...l.style, color: e.target.value } }
-                      : l,
+                  patchAuto(
+                    (l) =>
+                      l.type === 'title' || l.type === 'overlay'
+                        ? { ...l, style: { ...l.style, color: e.target.value } }
+                        : l,
+                    [{ property: 'color', getValue: (l) => (l.type === 'title' || l.type === 'overlay' ? l.style?.color ?? '#ffffff' : '#ffffff') }],
                   )
                 }
               />
@@ -204,10 +329,12 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
                 className="inspector-input"
                 value={textStyle?.color ?? '#ffffff'}
                 onChange={(e) =>
-                  patch((l) =>
-                    l.type === 'title' || l.type === 'overlay'
-                      ? { ...l, style: { ...l.style, color: e.target.value } }
-                      : l,
+                  patchAuto(
+                    (l) =>
+                      l.type === 'title' || l.type === 'overlay'
+                        ? { ...l, style: { ...l.style, color: e.target.value } }
+                        : l,
+                    [{ property: 'color', getValue: (l) => (l.type === 'title' || l.type === 'overlay' ? l.style?.color ?? '#ffffff' : '#ffffff') }],
                   )
                 }
               />
@@ -220,10 +347,12 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
               min={8}
               value={textStyle?.fontSize ?? 48}
               onChange={(e) =>
-                patch((l) =>
-                  l.type === 'title' || l.type === 'overlay'
-                    ? { ...l, style: { ...l.style, fontSize: Number(e.target.value) } }
-                    : l,
+                patchAuto(
+                  (l) =>
+                    l.type === 'title' || l.type === 'overlay'
+                      ? { ...l, style: { ...l.style, fontSize: Number(e.target.value) } }
+                      : l,
+                  [{ property: 'fontSize', getValue: (l) => (l.type === 'title' || l.type === 'overlay' ? l.style?.fontSize ?? 48 : 48) }],
                 )
               }
             />
@@ -240,16 +369,18 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
               placeholder="rgba(0,0,0,0.5)"
               disabled={layer.type !== 'overlay'}
               onChange={(e) =>
-                patch((l) =>
-                  l.type === 'overlay'
-                    ? {
-                        ...l,
-                        style: {
-                          ...l.style,
-                          backgroundColor: e.target.value || undefined,
-                        },
-                      }
-                    : l,
+                patchAuto(
+                  (l) =>
+                    l.type === 'overlay'
+                      ? {
+                          ...l,
+                          style: {
+                            ...l.style,
+                            backgroundColor: e.target.value || undefined,
+                          },
+                        }
+                      : l,
+                  [{ property: 'backgroundColor', getValue: (l) => (l.type === 'overlay' ? l.style?.backgroundColor ?? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.5)') }],
                 )
               }
             />
@@ -380,6 +511,21 @@ export function LayerInspector({ layer, layerId, onUpdate, onDelete }: LayerInsp
           />
         </Field>
       </InspectorSection>
+
+      {layer.type !== 'audio' && (
+        <InspectorSection title="Keyframes">
+          <KeyframeEditor
+            layer={layer}
+            layerId={layerId}
+            currentTime={currentTime}
+            autoKeyframe={autoKeyframe}
+            selectedKeyframe={selectedKeyframe}
+            onSelectKeyframe={onSelectKeyframe}
+            onToggleAutoKeyframe={onToggleAutoKeyframe}
+            onUpdate={(updater) => patch(updater)}
+          />
+        </InspectorSection>
+      )}
 
       <div className="inspector-actions">
         <button

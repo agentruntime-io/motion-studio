@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import type { Layer } from './types/project'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Layer, LayerKeyframes, SelectedKeyframeRef } from './types/project'
 import { sampleProject, sampleProjectJson, parseProjectJson } from './data/sampleProject'
 import { useVideoRenderer } from './hooks/useVideoRenderer'
 import { useProjectHistory } from './hooks/useProjectHistory'
@@ -7,10 +7,14 @@ import { PreviewPlayer, type PreviewPlayerHandle } from './components/PreviewPla
 import { PrerenderButton } from './components/PrerenderButton'
 import { ExportModal } from './components/ExportModal'
 import { JsonPanel } from './components/JsonPanel'
+import { SaveProjectModal } from './components/SaveProjectModal'
 import { Timeline } from './components/Timeline'
 import { LayerInspector } from './components/LayerInspector'
+import { ResizeHandle } from './components/ResizeHandle'
 import { usePrerender } from './hooks/usePrerender'
+import { useWorkspaceLayout } from './hooks/useWorkspaceLayout'
 import { loadStoredProjectPath, saveStoredProjectPath } from './lib/projectContext'
+import { isEditableTarget, readProjectJsonFile } from './lib/projectIO'
 import {
   addLayer,
   findLayerIndex,
@@ -19,6 +23,17 @@ import {
   updateLayer,
   type AddLayerKind,
 } from './lib/layerUtils'
+import {
+  clampLayerKeyframes,
+  cloneLayerKeyframes,
+  getAvailableKeyframeProperties,
+  getLayerKeyframes,
+  pasteKeyframesOntoLayer,
+  removeKeyframe,
+  moveKeyframeTime,
+} from './lib/keyframes'
+import { upsertKeyframeAtPlayhead } from './engine/keyframeEngine'
+import type { KeyframeProperty } from './types/project'
 import './App.css'
 
 function App() {
@@ -26,10 +41,23 @@ function App() {
   const [projectPath, setProjectPath] = useState(loadStoredProjectPath)
   const [localFilesVersion, setLocalFilesVersion] = useState(0)
   const [exportOpen, setExportOpen] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
   const [jsonOpen, setJsonOpen] = useState(false)
+  const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
+  const [selectedKeyframe, setSelectedKeyframe] = useState<SelectedKeyframeRef | null>(null)
+  const [autoKeyframe, setAutoKeyframe] = useState(false)
+  const [keyframeClipboard, setKeyframeClipboard] = useState<LayerKeyframes | null>(null)
   const previewRef = useRef<PreviewPlayerHandle>(null)
+  const openFileRef = useRef<HTMLInputElement>(null)
+  const {
+    propertiesWidth,
+    timelineHeight,
+    resizeProperties,
+    resizeTimeline,
+    persistLayout,
+  } = useWorkspaceLayout()
 
   const {
     project,
@@ -44,6 +72,9 @@ function App() {
     beginDrag,
     endDrag,
   } = useProjectHistory(sampleProject, sampleProjectJson)
+
+  const projectRef = useRef(project)
+  projectRef.current = project
 
   const loadContext = useMemo(
     () => ({
@@ -91,6 +122,7 @@ function App() {
     replaceProject(sampleProject, sampleProjectJson, true)
     setParseError(null)
     setSelectedLayerId(null)
+    setSelectedKeyframe(null)
     setCurrentTime(0)
   }
 
@@ -99,6 +131,7 @@ function App() {
       const parsed = parseProjectJson(json)
       replaceProject(parsed, json, true)
       setSelectedLayerId(null)
+      setSelectedKeyframe(null)
       setCurrentTime(0)
       if (path) {
         const normalized = path.replace(/^\/+|\/+$/g, '')
@@ -114,6 +147,40 @@ function App() {
     [replaceProject],
   )
 
+  const handleOpenProjectFile = useCallback(() => {
+    openFileRef.current?.click()
+  }, [])
+
+  const handleProjectFileSelected = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      event.target.value = ''
+      if (!file) return
+
+      try {
+        const json = await readProjectJsonFile(file)
+        handleLoadProject(json)
+        setSaveNotice(`Opened ${file.name}`)
+        setParseError(null)
+      } catch (err) {
+        setParseError(err instanceof Error ? err.message : 'Failed to open project file')
+      }
+    },
+    [handleLoadProject],
+  )
+
+  const handleProjectSaved = useCallback(
+    (path: string, json: string) => {
+      const normalized = path.replace(/^\/+|\/+$/g, '')
+      setProjectPath(normalized)
+      saveStoredProjectPath(normalized)
+      replaceProject(parseProjectJson(json), json, false)
+      setSaveNotice(`Saved to ${normalized}/project.json`)
+      setParseError(null)
+    },
+    [replaceProject],
+  )
+
   const handleLayerUpdate = useCallback(
     (layerId: string, updater: (layer: Layer) => Layer) => {
       applyProject(updateLayer(project, layerId, updater), 'debounced')
@@ -124,14 +191,38 @@ function App() {
   const handleTimelineUpdate = useCallback(
     (layerId: string, patch: { start?: number; duration?: number }) => {
       applyProject(
-        updateLayer(project, layerId, (layer) => ({
-          ...layer,
-          ...patch,
-        })),
+        updateLayer(projectRef.current, layerId, (layer) =>
+          clampLayerKeyframes({
+            ...layer,
+            ...patch,
+          }),
+        ),
         'none',
       )
     },
-    [applyProject, project],
+    [applyProject],
+  )
+
+  const handleMoveKeyframe = useCallback(
+    (layerId: string, property: KeyframeProperty, fromTime: number, toTime: number) => {
+      const rounded = Math.round(toTime * 100) / 100
+      applyProject(
+        updateLayer(projectRef.current, layerId, (layer) => {
+          const next = moveKeyframeTime(
+            getLayerKeyframes(layer),
+            property,
+            fromTime,
+            rounded,
+            layer.duration,
+          )
+          if (!next) return layer
+          return { ...layer, keyframes: next, workflow: undefined }
+        }),
+        true,
+      )
+      setSelectedKeyframe({ layerId, property, t: rounded })
+    },
+    [applyProject],
   )
 
   const handleAddLayer = useCallback(
@@ -149,6 +240,7 @@ function App() {
     (layerId: string) => {
       applyProject(removeLayer(project, layerId), true)
       setSelectedLayerId(null)
+      setSelectedKeyframe(null)
     },
     [applyProject, project],
   )
@@ -158,6 +250,121 @@ function App() {
     const index = findLayerIndex(project, selectedLayerId)
     return index >= 0 ? project.layers[index] : null
   }, [project, selectedLayerId])
+
+  const motionPathLayer = useMemo(() => {
+    if (!selectedLayer || selectedLayer.type === 'audio') return null
+    const data = getLayerKeyframes(selectedLayer)
+    const hasMotion = data?.tracks.some(
+      (track) =>
+        (track.property === 'x' || track.property === 'y') && track.keyframes.length > 0,
+    )
+    return hasMotion ? selectedLayer : null
+  }, [selectedLayer])
+
+  const addKeyframesAtPlayhead = useCallback(() => {
+    if (!selectedLayerId || !selectedLayer || selectedLayer.type === 'audio') return
+    const localTime = Math.max(0, Math.min(selectedLayer.duration, currentTime - selectedLayer.start))
+    const inClip =
+      currentTime >= selectedLayer.start && currentTime <= selectedLayer.start + selectedLayer.duration
+    if (!inClip) return
+
+    applyProject(
+      updateLayer(project, selectedLayerId, (layer) => {
+        let next = layer
+        for (const property of getAvailableKeyframeProperties(layer)) {
+          next = upsertKeyframeAtPlayhead(next, property, localTime)
+        }
+        return next
+      }),
+      true,
+    )
+  }, [applyProject, currentTime, project, selectedLayer, selectedLayerId])
+
+  const deleteSelectedKeyframe = useCallback(() => {
+    if (!selectedKeyframe) return
+    applyProject(
+      updateLayer(project, selectedKeyframe.layerId, (layer) => {
+        const next = removeKeyframe(
+          getLayerKeyframes(layer),
+          selectedKeyframe.property,
+          selectedKeyframe.t,
+        )
+        if (!next) {
+          const { keyframes: _k, workflow: _w, ...rest } = layer as Layer & {
+            keyframes?: NonNullable<typeof next>
+            workflow?: NonNullable<typeof next>
+          }
+          return rest
+        }
+        return { ...layer, keyframes: next, workflow: undefined }
+      }),
+      true,
+    )
+    setSelectedKeyframe(null)
+  }, [applyProject, project, selectedKeyframe])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey
+      if (mod && !isEditableTarget(event.target)) {
+        if (event.key === 's') {
+          event.preventDefault()
+          setSaveOpen(true)
+          return
+        }
+        if (event.key === 'o') {
+          event.preventDefault()
+          handleOpenProjectFile()
+          return
+        }
+      }
+
+      if (isEditableTarget(event.target)) return
+
+      if (event.key === 'k' || event.key === 'K') {
+        event.preventDefault()
+        addKeyframesAtPlayhead()
+        return
+      }
+
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedKeyframe) {
+        event.preventDefault()
+        deleteSelectedKeyframe()
+        return
+      }
+
+      if (!mod || isEditableTarget(event.target)) return
+
+      if (event.key === 'c' && selectedLayer) {
+        const copied = cloneLayerKeyframes(getLayerKeyframes(selectedLayer))
+        if (copied) {
+          event.preventDefault()
+          setKeyframeClipboard(copied)
+        }
+      } else if (event.key === 'v' && selectedLayerId && keyframeClipboard) {
+        event.preventDefault()
+        applyProject(
+          updateLayer(project, selectedLayerId, (layer) =>
+            pasteKeyframesOntoLayer(layer, keyframeClipboard),
+          ),
+          true,
+        )
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [
+    addKeyframesAtPlayhead,
+    applyProject,
+    deleteSelectedKeyframe,
+    handleOpenProjectFile,
+    keyframeClipboard,
+    project,
+    selectedKeyframe,
+    selectedLayer,
+    selectedLayerId,
+  ])
 
   const displayError = parseError ?? loadError
 
@@ -192,6 +399,24 @@ function App() {
               ↷
             </button>
           </div>
+          <div className="header-file-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={handleOpenProjectFile}
+              title="Open project.json (Ctrl+O)"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setSaveOpen(true)}
+              title="Save project.json (Ctrl+S)"
+            >
+              Save
+            </button>
+          </div>
           <button
             type="button"
             className={`btn btn-ghost btn-json ${jsonOpen ? 'active' : ''}`}
@@ -200,6 +425,7 @@ function App() {
             JSON
           </button>
           <div className="project-meta">
+            {saveNotice && <span className="project-save-notice">{saveNotice}</span>}
             {projectPath && <span>{projectPath}</span>}
             <span>{project.width}×{project.height}</span>
             <span>{project.fps} fps</span>
@@ -226,6 +452,22 @@ function App() {
         previewRef={previewRef}
       />
 
+      <SaveProjectModal
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        projectPath={projectPath}
+        jsonText={jsonText}
+        onSaved={handleProjectSaved}
+      />
+
+      <input
+        ref={openFileRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden-input"
+        onChange={(event) => void handleProjectFileSelected(event)}
+      />
+
       <JsonPanel
         open={jsonOpen}
         onClose={() => setJsonOpen(false)}
@@ -242,53 +484,84 @@ function App() {
       />
 
       <main className="app-main">
-        <section className="panel properties-panel">
+        <section
+          className="panel properties-panel"
+          style={{ width: propertiesWidth }}
+        >
           <div className="panel-header">
             <h2>Properties</h2>
           </div>
           <LayerInspector
             layer={selectedLayer}
             layerId={selectedLayerId}
+            currentTime={currentTime}
+            autoKeyframe={autoKeyframe}
+            selectedKeyframe={selectedKeyframe}
+            onSelectKeyframe={setSelectedKeyframe}
+            onToggleAutoKeyframe={() => setAutoKeyframe((value) => !value)}
             onUpdate={handleLayerUpdate}
             onDelete={handleDeleteLayer}
           />
         </section>
 
+        <ResizeHandle
+          direction="horizontal"
+          ariaLabel="Resize properties panel"
+          onDrag={resizeProperties}
+          onDragEnd={persistLayout}
+        />
+
         <section className="panel workspace-panel">
-          <div className="panel-header preview-panel-header">
-            <h2>Preview</h2>
-            <div className="preview-panel-actions">
-              {ready && <span className="badge badge-success">Ready</span>}
-              <PrerenderButton
-                onPrerender={runPrerender}
-                rendering={prerenderRendering}
-                stale={prerenderStale}
-                ready={ready}
-                progress={prerenderProgress?.progress}
-              />
+          <div className="workspace-preview">
+            <div className="panel-header preview-panel-header">
+              <h2>Preview</h2>
+              <div className="preview-panel-actions">
+                {ready && <span className="badge badge-success">Ready</span>}
+                <PrerenderButton
+                  onPrerender={runPrerender}
+                  rendering={prerenderRendering}
+                  stale={prerenderStale}
+                  ready={ready}
+                  progress={prerenderProgress?.progress}
+                />
+              </div>
             </div>
+            <PreviewPlayer
+              ref={previewRef}
+              project={project}
+              ready={ready}
+              renderFrame={renderFrame}
+              motionPathLayer={motionPathLayer}
+              prerenderUrl={prerenderUrl}
+              usePrerenderPreview={usePrerenderPreview}
+              currentTime={currentTime}
+              onCurrentTimeChange={setCurrentTime}
+            />
           </div>
-          <PreviewPlayer
-            ref={previewRef}
-            project={project}
-            ready={ready}
-            renderFrame={renderFrame}
-            prerenderUrl={prerenderUrl}
-            usePrerenderPreview={usePrerenderPreview}
-            currentTime={currentTime}
-            onCurrentTimeChange={setCurrentTime}
+
+          <ResizeHandle
+            direction="vertical"
+            ariaLabel="Resize timeline panel"
+            onDrag={resizeTimeline}
+            onDragEnd={persistLayout}
           />
-          <Timeline
-            project={project}
-            currentTime={currentTime}
-            selectedLayerId={selectedLayerId}
-            onSelectLayer={setSelectedLayerId}
-            onSeek={setCurrentTime}
-            onUpdateLayer={handleTimelineUpdate}
-            onAddLayer={handleAddLayer}
-            onLayerDragStart={beginDrag}
-            onLayerDragEnd={endDrag}
-          />
+
+          <div className="workspace-timeline" style={{ height: timelineHeight }}>
+            <Timeline
+              project={project}
+              currentTime={currentTime}
+              selectedLayerId={selectedLayerId}
+              selectedKeyframe={selectedKeyframe}
+              onSelectLayer={setSelectedLayerId}
+              onSelectKeyframe={setSelectedKeyframe}
+              onSeek={setCurrentTime}
+              onUpdateLayer={handleTimelineUpdate}
+              onMoveKeyframe={handleMoveKeyframe}
+              onAddLayer={handleAddLayer}
+              onLayerDragStart={beginDrag}
+              onLayerDragEnd={endDrag}
+            />
+          </div>
         </section>
       </main>
     </div>

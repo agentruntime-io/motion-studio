@@ -1,5 +1,6 @@
 import type { VideoProject } from '../types/project'
 import { createGradientDataUrl } from '../engine/assetLoader'
+import { normalizeProjectKeyframes } from '../lib/keyframes'
 
 const W = 1280
 const H = 720
@@ -27,6 +28,32 @@ export const sampleProject: VideoProject = {
       zIndex: 0,
       transition: { in: 'fade', out: 'slideLeft', duration: 0.8 },
       effects: [{ type: 'vignette', intensity: 0.4 }],
+      keyframes: {
+        name: 'Ken Burns',
+        tracks: [
+          {
+            property: 'scale',
+            keyframes: [
+              { t: 0, value: 1, easing: 'linear' },
+              { t: 4, value: 1.15, easing: 'easeInOut' },
+            ],
+          },
+          {
+            property: 'x',
+            keyframes: [
+              { t: 0, value: 0, easing: 'linear' },
+              { t: 4, value: -40, easing: 'easeInOut' },
+            ],
+          },
+          {
+            property: 'y',
+            keyframes: [
+              { t: 0, value: 0, easing: 'linear' },
+              { t: 4, value: -24, easing: 'easeInOut' },
+            ],
+          },
+        ],
+      },
     },
     {
       id: 'bg-2',
@@ -85,6 +112,26 @@ export const sampleProject: VideoProject = {
       height: 60,
       zIndex: 11,
       animation: { in: 'fadeIn', out: 'fadeOut', duration: 0.5 },
+      keyframes: {
+        name: 'Drift Up',
+        tracks: [
+          {
+            property: 'y',
+            keyframes: [
+              { t: 0, value: 20, easing: 'easeOut' },
+              { t: 2.5, value: -20, easing: 'easeInOut' },
+            ],
+          },
+          {
+            property: 'opacity',
+            keyframes: [
+              { t: 0, value: 0.5, easing: 'linear' },
+              { t: 1.25, value: 1, easing: 'linear' },
+              { t: 2.5, value: 0.7, easing: 'linear' },
+            ],
+          },
+        ],
+      },
       style: {
         fontSize: 28,
         color: '#e0e0ff',
@@ -209,11 +256,23 @@ export const sampleProject: VideoProject = {
 export const sampleProjectJson = JSON.stringify(sampleProject, null, 2)
 
 export function parseProjectJson(json: string): VideoProject {
-  const parsed = JSON.parse(json) as VideoProject
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    throw new Error('Invalid JSON syntax. The project must be one complete object with width, height, fps, duration, and layers[].')
+  }
 
-  if (!parsed.width || !parsed.height || !parsed.fps || !parsed.duration || !Array.isArray(parsed.layers)) {
+  const project = parsed as VideoProject
+
+  if (!project.width || !project.height || !project.fps || !project.duration || !Array.isArray(project.layers)) {
+    if (parsed && typeof parsed === 'object' && ('tracks' in (parsed as object) || 'keyframes' in (parsed as object))) {
+      throw new Error(
+        'This looks like a keyframe fragment, not a full project. Paste a complete project JSON, or put keyframes inside a layer in layers[].',
+      )
+    }
     throw new Error('Invalid project JSON: requires width, height, fps, duration, and layers[]')
   }
 
-  return parsed
+  return normalizeProjectKeyframes(project)
 }
