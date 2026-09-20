@@ -370,7 +370,7 @@ function App() {
       <header className="app-header">
         <div className="brand">
           <img
-            src="/logo-white.png"
+            src="/logo-svg.svg"
             alt="Motion Studio — Built by AgentRuntime"
             className="brand-logo"
           />

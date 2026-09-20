@@ -10,7 +10,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  box-sizing: border-box;
+  height: 72px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   gap: 1rem;
@@ -21,17 +23,21 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  min-width: 0;
-  flex-shrink: 1;
+  height: 100%;
+  flex-shrink: 0;
+  line-height: 0;
 }
 
 .brand-logo {
-  height: 48px;
-  width: auto;
-  max-width: min(240px, 42vw);
-  object-fit: contain;
   display: block;
+  height: 57px;
+  width: auto;
+  max-width: 222px;
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+  /* logo asset is black-on-white; invert for dark header */
+  filter: invert(1);
 }
 
 .project-meta {
@@ -1813,9 +1819,8 @@
 }
 
 /* Refined studio workspace */
-.app-header { height: 72px; padding: 0 24px; background: #171a1b; }
-.brand { gap: 11px; }
-.brand-logo { height: 44px; max-width: min(220px, 38vw); }
+.app-header { background: #171a1b; }
+.brand { gap: 0; }
 .header-right { gap: 14px; }
 .header-history { padding-right: 14px; border-right: 1px solid var(--border); }
 .header-history .btn { border: 0; }
@@ -1887,4 +1892,4 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .timeline-clip.selected { border-color: #c5f5d9; box-shadow: 0 0 0 1px #c5f5d9; }
 .layer-inspector { background: #1b201d; border-color: #333c36; border-radius: 7px; }
 @media (max-width: 1050px) { .project-format, .local-status { display: none; } .project-bar { justify-content: space-between; gap: 8px; } .properties-panel { padding: 15px 12px; } .timeline-toolbar { gap: 10px; } }
-@media (max-width: 700px) { .app-header { padding: 0 12px; height: 62px; } .brand-logo { height: 36px; max-width: 180px; } .header-history, .project-meta { display: none; } .header-right { gap: 5px; } .btn { padding: 7px 9px; } .properties-panel { max-width: 34vw; min-width: 145px; } .quick-add-grid { grid-template-columns: 1fr; } .overview-art, .project-overview > p, .composition-details, .inspector-footer { display: none; } .project-overview h3 { font-size: 13px; } .preview-stage { margin: 0 10px 10px; } .preview-controls { padding: 8px; gap: 7px; } .time-display { min-width: 80px; font-size: 9px; } .timeline-labels { width: 80px; } .timeline-add-layers { gap: 3px; } .timeline-title { display: none; } }
+@media (max-width: 700px) { .app-header { padding: 0 12px; height: 62px; } .brand-logo { height: 48px; max-width: 180px; } .header-history, .project-meta { display: none; } .header-right { gap: 5px; } .btn { padding: 7px 9px; } .properties-panel { max-width: 34vw; min-width: 145px; } .quick-add-grid { grid-template-columns: 1fr; } .overview-art, .project-overview > p, .composition-details, .inspector-footer { display: none; } .project-overview h3 { font-size: 13px; } .preview-stage { margin: 0 10px 10px; } .preview-controls { padding: 8px; gap: 7px; } .time-display { min-width: 80px; font-size: 9px; } .timeline-labels { width: 80px; } .timeline-add-layers { gap: 3px; } .timeline-title { display: none; } }

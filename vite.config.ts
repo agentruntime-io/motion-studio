@@ -174,4 +174,9 @@ export default defineConfig({
   define: {
     __WORKSPACE_ROOT__: JSON.stringify(process.cwd()),
   },
+  server: {
+    watch: {
+      ignored: ['**/*.psd', '**/* - Copy.psd'],
+    },
+  },
 })
