@@ -86,8 +86,6 @@ function App() {
 
   const { ready, error: loadError, renderFrame } = useVideoRenderer(project, loadContext)
 
-  const getCanvas = useCallback(() => previewRef.current?.getCanvas() ?? null, [])
-
   const {
     prerenderUrl,
     usePrerenderPreview,
@@ -102,7 +100,6 @@ function App() {
     jsonText,
     ready,
     renderFrame,
-    getCanvas,
   })
 
   const handleApply = useCallback(() => {
@@ -438,7 +435,6 @@ function App() {
         project={project}
         ready={ready}
         renderFrame={renderFrame}
-        previewRef={previewRef}
       />
 
       <SaveProjectModal

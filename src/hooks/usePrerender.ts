@@ -17,7 +17,6 @@ interface UsePrerenderOptions {
   jsonText: string
   ready: boolean
   renderFrame: (ctx: CanvasRenderingContext2D, time: number) => void
-  getCanvas: () => HTMLCanvasElement | null
 }
 
 export function usePrerender({
@@ -27,7 +26,6 @@ export function usePrerender({
   jsonText,
   ready,
   renderFrame,
-  getCanvas,
 }: UsePrerenderOptions) {
   const [rendering, setRendering] = useState(false)
   const [progress, setProgress] = useState<ExportProgress | null>(null)
@@ -62,22 +60,19 @@ export function usePrerender({
   }, [projectPath])
 
   const runPrerender = useCallback(async () => {
-    const canvas = getCanvas()
-    if (!canvas || !ready || rendering) return
+    if (!ready || rendering) return
 
     setRendering(true)
     setProgress({ phase: 'rendering', progress: 0, message: 'Pre-rendering…' })
 
     try {
       const blob = await exportVideoWithRenderer(
-        canvas,
         {
           duration: project.duration,
           fps: project.fps,
-          renderAtTime: (time) => {
-            const ctx = canvas.getContext('2d')
-            if (ctx) renderFrame(ctx, time)
-          },
+          width: project.width,
+          height: project.height,
+          renderFrame,
         },
         setProgress,
       )
@@ -93,7 +88,7 @@ export function usePrerender({
     } finally {
       setRendering(false)
     }
-  }, [fingerprint, getCanvas, project.duration, project.fps, projectPath, ready, renderFrame, rendering])
+  }, [fingerprint, project.width, project.height, project.duration, project.fps, projectPath, ready, renderFrame, rendering])
 
   return {
     prerenderUrl,

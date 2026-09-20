@@ -1,8 +1,7 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useState } from 'react'
 import type { VideoProject } from '../types/project'
 import type { ExportProgress } from '../engine/exporter'
 import { downloadBlob, exportVideoWithRenderer } from '../engine/exporter'
-import type { PreviewPlayerHandle } from './PreviewPlayer'
 
 interface ExportModalProps {
   open: boolean
@@ -10,7 +9,6 @@ interface ExportModalProps {
   project: VideoProject
   ready: boolean
   renderFrame: (ctx: CanvasRenderingContext2D, time: number) => void
-  previewRef: RefObject<PreviewPlayerHandle | null>
 }
 
 export function ExportModal({
@@ -19,7 +17,6 @@ export function ExportModal({
   project,
   ready,
   renderFrame,
-  previewRef,
 }: ExportModalProps) {
   const [exporting, setExporting] = useState(false)
   const [progress, setProgress] = useState<ExportProgress | null>(null)
@@ -49,22 +46,19 @@ export function ExportModal({
   }, [open])
 
   const handleExport = async () => {
-    const canvas = previewRef.current?.getCanvas()
-    if (!canvas || !ready || exporting) return
+    if (!ready || exporting) return
 
     setExporting(true)
     setProgress({ phase: 'rendering', progress: 0 })
 
     try {
       const blob = await exportVideoWithRenderer(
-        canvas,
         {
           duration: project.duration,
           fps: project.fps,
-          renderAtTime: (time) => {
-            const ctx = canvas.getContext('2d')
-            if (ctx) renderFrame(ctx, time)
-          },
+          width: project.width,
+          height: project.height,
+          renderFrame,
         },
         setProgress,
       )

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Layer, VideoProject } from '../types/project'
 import type { ProjectLoadContext } from '../lib/projectContext'
 import { buildResolveOptions } from '../lib/projectContext'
@@ -11,7 +11,7 @@ export interface RenderFrameOptions {
 export function useVideoRenderer(project: VideoProject | null, context?: ProjectLoadContext) {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const rendererRef = useRef<VideoRenderer | null>(null)
+  const [renderer, setRenderer] = useState<VideoRenderer | null>(null)
 
   const contextKey = JSON.stringify(context ?? {})
 
@@ -27,7 +27,7 @@ export function useVideoRenderer(project: VideoProject | null, context?: Project
     createRenderer(project, resolveOptions)
       .then((renderer) => {
         if (cancelled) return
-        rendererRef.current = renderer
+        setRenderer(renderer)
         setReady(true)
       })
       .catch((err) => {
@@ -43,9 +43,9 @@ export function useVideoRenderer(project: VideoProject | null, context?: Project
 
   const renderFrame = useCallback(
     (ctx: CanvasRenderingContext2D, time: number, options?: RenderFrameOptions) => {
-      rendererRef.current?.renderFrame(ctx, time, options)
+      renderer?.renderFrame(ctx, time, options)
     },
-    [],
+    [renderer],
   )
 
   const reload = useCallback(async () => {
@@ -54,7 +54,7 @@ export function useVideoRenderer(project: VideoProject | null, context?: Project
     setError(null)
     try {
       const renderer = await createRenderer(project, buildResolveOptions(project, context))
-      rendererRef.current = renderer
+      setRenderer(renderer)
       setReady(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load project')
