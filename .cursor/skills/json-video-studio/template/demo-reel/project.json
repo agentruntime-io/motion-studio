@@ -1,0 +1,70 @@
+{
+  "name": "Demo Reel (Project Folder)",
+  "projectPath": "projects/demo-reel",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "duration": 8,
+  "backgroundColor": "#0a0a0f",
+  "layers": [
+    {
+      "id": "bg",
+      "type": "image",
+      "src": "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1280' height='720'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%231a1a2e'/%3E%3Cstop offset='100%25' stop-color='%2316213e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1280' height='720' fill='url(%23g)'/%3E%3C/svg%3E",
+      "start": 0,
+      "duration": 8,
+      "width": 1280,
+      "height": 720,
+      "zIndex": 0,
+      "effects": [{ "type": "vignette", "intensity": 0.35 }]
+    },
+    {
+      "id": "logo",
+      "type": "overlay",
+      "overlayType": "image",
+      "src": "logo.svg",
+      "start": 0.5,
+      "duration": 5,
+      "x": 80,
+      "y": 80,
+      "width": 100,
+      "height": 100,
+      "zIndex": 10,
+      "animation": { "in": "scaleIn", "out": "fadeOut", "duration": 0.6 }
+    },
+    {
+      "id": "badge",
+      "type": "overlay",
+      "overlayType": "image",
+      "src": "badge.svg",
+      "start": 2,
+      "duration": 4,
+      "x": 1080,
+      "y": 80,
+      "width": 120,
+      "height": 120,
+      "zIndex": 11,
+      "animation": { "in": "bounce", "duration": 0.8 }
+    },
+    {
+      "id": "title",
+      "type": "title",
+      "text": "Project Folder Demo",
+      "start": 1,
+      "duration": 5,
+      "x": 0,
+      "y": 320,
+      "width": 1280,
+      "height": 100,
+      "zIndex": 12,
+      "animation": { "in": "slideInUp", "out": "fadeOut", "duration": 0.6 },
+      "style": {
+        "fontSize": 64,
+        "fontWeight": "800",
+        "color": "#ffffff",
+        "align": "center",
+        "shadow": { "color": "rgba(0,0,0,0.5)", "blur": 12, "offsetY": 4 }
+      }
+    }
+  ]
+}
