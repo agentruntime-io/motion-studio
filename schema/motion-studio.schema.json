@@ -487,6 +487,53 @@
         }
       }
     },
+    "flowSequenceEntry": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parallel"],
+          "properties": {
+            "parallel": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      ]
+    },
+    "flowRevealTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "entries"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "parallelWith": { "type": "string" },
+        "parallelAfterEntry": { "type": "integer", "minimum": 0 },
+        "waitForTracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["afterEntry", "tracks"],
+            "properties": {
+              "afterEntry": { "type": "integer", "minimum": 0 },
+              "tracks": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/flowSequenceEntry" }
+        }
+      }
+    },
     "flowAnimation": {
       "type": "object",
       "additionalProperties": false,
@@ -496,9 +543,14 @@
         "lineDuration": { "type": "number", "minimum": 0 },
         "nodeDuration": { "type": "number", "minimum": 0 },
         "easing": { "$ref": "#/$defs/easing" },
+        "highlightActive": { "type": "boolean" },
         "sequence": {
           "type": "array",
           "items": { "type": "string" }
+        },
+        "tracks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/flowRevealTrack" }
         }
       }
     },

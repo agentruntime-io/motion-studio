@@ -189,6 +189,38 @@ export interface FlowEdge {
 
 export type FlowAnimationMode = 'sequential' | 'parallel' | 'instant'
 
+/** Node id or edge token like "edge:from->to" */
+export type FlowSequenceToken = string
+
+export interface FlowParallelBlock {
+  parallel: FlowSequenceToken[]
+}
+
+export type FlowSequenceEntry = FlowSequenceToken | FlowParallelBlock
+
+export function isFlowParallelBlock(entry: FlowSequenceEntry): entry is FlowParallelBlock {
+  return typeof entry === 'object' && entry !== null && 'parallel' in entry
+}
+
+export interface FlowTrackWait {
+  /** Wait after this entry index (0-based) completes */
+  afterEntry: number
+  /** Track ids that must finish before continuing */
+  tracks: string[]
+}
+
+export interface FlowRevealTrack {
+  id: string
+  label?: string
+  /** Sync start with another track */
+  parallelWith?: string
+  /** Start when the referenced track finishes this entry index */
+  parallelAfterEntry?: number
+  /** Pause points on this track while other tracks finish */
+  waitForTracks?: FlowTrackWait[]
+  entries: FlowSequenceEntry[]
+}
+
 export interface FlowAnimationConfig {
   mode?: FlowAnimationMode
   /** Pause between steps (seconds) */
@@ -198,8 +230,12 @@ export interface FlowAnimationConfig {
   /** Node reveal duration (seconds) */
   nodeDuration?: number
   easing?: EasingType
-  /** Reveal order: node ids and/or edge tokens like "edge:from->to" */
-  sequence?: string[]
+  /** Dim inactive nodes/edges while the reveal plays */
+  highlightActive?: boolean
+  /** @deprecated Use tracks — kept for import compatibility */
+  sequence?: FlowSequenceToken[]
+  /** Multi-lane reveal timeline */
+  tracks?: FlowRevealTrack[]
 }
 
 export interface FlowTheme {

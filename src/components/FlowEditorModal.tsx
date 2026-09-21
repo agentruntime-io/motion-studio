@@ -45,11 +45,12 @@ export function FlowEditorModal({
         className="flow-editor-modal"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-label="Edit flow diagram"
       >
         <div className="flow-editor-modal-header">
           <div>
-            <h2>Edit flow</h2>
+            <h2>Flow editor</h2>
             {layerLabel && <p className="flow-editor-modal-subtitle">{layerLabel}</p>}
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="Close">

@@ -2,17 +2,29 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FlowLayer, FlowNode, FlowNodeStyle } from '../types/project'
 import {
   buildEdgePath,
+  getEdgeRevealProgress,
   getFlowNodeAnchor,
   getFlowNodeSize,
   getFlowNodeStyle,
+  getFlowRevealState,
+  getNodeRevealProgress,
 } from '../engine/flowAnimation'
 import {
   createFlowNodeId,
   edgeKey,
   pathToSvgD,
-  suggestFlowSequence,
+  polylineLength,
   hasFlowNodeNumber,
 } from '../lib/flowUtils'
+import {
+  appendEdgeToMainTrack,
+  appendNodeToTracks,
+  getFlowTracks,
+  removeTokenFromTracks,
+  suggestFlowTracks,
+  syncFlowTracks,
+} from '../lib/flowTimeline'
+import { FlowRevealTimeline } from './FlowRevealTimeline'
 
 interface FlowEditorProps {
   layer: FlowLayer
@@ -56,6 +68,8 @@ export function FlowEditor({
   } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(360)
   const [viewportHeight, setViewportHeight] = useState(300)
+  const [previewTime, setPreviewTime] = useState(0)
+  const [previewPlaying, setPreviewPlaying] = useState(false)
 
   useEffect(() => {
     const node = layout === 'expanded' ? canvasWrapRef.current : containerRef.current
@@ -100,7 +114,14 @@ export function FlowEditor({
       if (from === to) return
       patch((current) => {
         if (current.edges.some((edge) => edge.from === from && edge.to === to)) return current
-        return { ...current, edges: [...current.edges, { from, to }] }
+        const tracks = getFlowTracks(current)
+        return syncFlowTracks(
+          {
+            ...current,
+            edges: [...current.edges, { from, to }],
+          },
+          appendEdgeToMainTrack(tracks, from, to),
+        )
       })
       setConnectFromId(null)
       setConnectPreview(null)
@@ -158,14 +179,8 @@ export function FlowEditor({
         x: 80 + current.nodes.length * 40,
         y: 120 + current.nodes.length * 24,
       }
-      return {
-        ...current,
-        nodes: [...current.nodes, node],
-        flowAnimation: {
-          ...current.flowAnimation,
-          sequence: [...(current.flowAnimation?.sequence ?? suggestFlowSequence(current)), id],
-        },
-      }
+      const tracks = appendNodeToTracks(getFlowTracks(current), id)
+      return syncFlowTracks({ ...current, nodes: [...current.nodes, node] }, tracks)
     })
     setSelectedNodeIds([id])
     setSelectedEdgeKeys([])
@@ -174,35 +189,42 @@ export function FlowEditor({
   const deleteSelected = useCallback(() => {
     if (selectedNodeIds.length > 0) {
       const ids = new Set(selectedNodeIds)
-      patch((current) => ({
-        ...current,
-        nodes: current.nodes.filter((node) => !ids.has(node.id)),
-        edges: current.edges.filter((edge) => !ids.has(edge.from) && !ids.has(edge.to)),
-        flowAnimation: {
-          ...current.flowAnimation,
-          sequence: (current.flowAnimation?.sequence ?? suggestFlowSequence(current)).filter(
-            (entry) => !selectedNodeIds.some((id) => entry.includes(id)),
-          ),
-        },
-      }))
+      patch((current) => {
+        const tracks = removeTokenFromTracks(getFlowTracks(current), (token) =>
+          selectedNodeIds.some((id) => token.includes(id)),
+        )
+        return syncFlowTracks(
+          {
+            ...current,
+            nodes: current.nodes.filter((node) => !ids.has(node.id)),
+            edges: current.edges.filter((edge) => !ids.has(edge.from) && !ids.has(edge.to)),
+          },
+          tracks,
+        )
+      })
       clearSelection()
       return
     }
     if (selectedEdgeKeys.length > 0) {
       const keys = new Set(selectedEdgeKeys)
-      patch((current) => ({
-        ...current,
-        edges: current.edges.filter((edge) => !keys.has(edgeKey(edge.from, edge.to))),
-      }))
+      patch((current) => {
+        const tracks = removeTokenFromTracks(getFlowTracks(current), (token) =>
+          selectedEdgeKeys.some((key) => token.includes(key)),
+        )
+        return syncFlowTracks(
+          {
+            ...current,
+            edges: current.edges.filter((edge) => !keys.has(edgeKey(edge.from, edge.to))),
+          },
+          tracks,
+        )
+      })
       clearSelection()
     }
   }, [clearSelection, patch, selectedEdgeKeys, selectedNodeIds])
 
   const autoSequence = () => {
-    patch((current) => ({
-      ...current,
-      flowAnimation: { ...current.flowAnimation, sequence: suggestFlowSequence(current) },
-    }))
+    patch((current) => syncFlowTracks(current, suggestFlowTracks(current)))
   }
 
   const handleNodePointerDown = (event: React.PointerEvent, node: FlowNode) => {
@@ -323,15 +345,63 @@ export function FlowEditor({
     [connectFromId, layer.nodes],
   )
 
+  const previewActive = previewTime > 0 || previewPlaying
+  const revealState = useMemo(
+    () => (previewActive ? getFlowRevealState(layer, previewTime) : null),
+    [layer, previewActive, previewTime],
+  )
+
+  const getNodePreviewStyle = (nodeId: string): React.CSSProperties => {
+    if (!previewActive) return {}
+    const progress = getNodeRevealProgress(layer, nodeId, previewTime)
+    if (progress <= 0) return { opacity: 0.12, pointerEvents: 'none' as const }
+
+    const isActive = revealState?.activeNodeIds.has(nodeId)
+    const highlight = layer.flowAnimation?.highlightActive !== false
+    if (highlight && revealState && revealState.activeNodeIds.size > 0) {
+      if (isActive) return { opacity: 1, transform: 'scale(1.04)' }
+      if (revealState.revealedNodeIds.has(nodeId)) return { opacity: 0.45 }
+      return { opacity: progress }
+    }
+
+    return { opacity: progress }
+  }
+
+  const getEdgePreviewStyle = (edge: FlowLayer['edges'][number], path: { x: number; y: number }[]) => {
+    if (!previewActive) return { opacity: 1, strokeDasharray: undefined, strokeDashoffset: undefined }
+    const progress = getEdgeRevealProgress(layer, edge, previewTime)
+    if (progress <= 0) return { opacity: 0.08 }
+
+    const length = polylineLength(path)
+    const isActive = revealState?.activeEdgeKeys.has(edgeKey(edge.from, edge.to))
+    const highlight = layer.flowAnimation?.highlightActive !== false
+
+    let opacity = 1
+    if (highlight && revealState && revealState.activeEdgeKeys.size + revealState.activeNodeIds.size > 0) {
+      if (isActive) opacity = 1
+      else if (revealState.revealedEdgeKeys.has(edgeKey(edge.from, edge.to))) opacity = 0.45
+    }
+
+    if (progress >= 1) return { opacity, strokeDasharray: undefined, strokeDashoffset: undefined }
+
+    return {
+      opacity,
+      strokeDasharray: `${length} ${length}`,
+      strokeDashoffset: length * (1 - progress),
+    }
+  }
+
   return (
     <div
       className={`flow-editor ${layout === 'expanded' ? 'flow-editor-expanded' : ''} ${mode === 'connect' ? 'flow-editor-connect-mode' : ''}`}
       ref={containerRef}
     >
+      <div className="flow-editor-topbar">
       <div className="flow-editor-toolbar">
         <button
           type="button"
           className={`btn btn-ghost ${mode === 'select' ? 'active' : ''}`}
+          aria-pressed={mode === 'select'}
           onClick={() => {
             setMode('select')
             setConnectFromId(null)
@@ -343,6 +413,7 @@ export function FlowEditor({
         <button
           type="button"
           className={`btn btn-ghost ${mode === 'connect' ? 'active' : ''}`}
+          aria-pressed={mode === 'connect'}
           onClick={() => {
             setMode('connect')
             setConnectFromId(null)
@@ -352,9 +423,9 @@ export function FlowEditor({
           Connect
         </button>
         <button type="button" className="btn btn-ghost" onClick={autoSequence}>
-          Auto sequence
+          Auto layout
         </button>
-        <button type="button" className="btn btn-ghost" onClick={deleteSelected}>
+        <button type="button" className="btn btn-ghost flow-delete" disabled={!selectedNodeIds.length && !selectedEdgeKeys.length} onClick={deleteSelected}>
           Delete
         </button>
       </div>
@@ -371,14 +442,15 @@ export function FlowEditor({
           n8n
         </button>
       </div>
+      </div>
 
-      {mode === 'connect' && (
-        <p className="flow-editor-hint">
-          {connectFromId
+        <div className="flow-editor-hint">
+          <span>{mode === 'connect' ? connectFromId
             ? 'Drag to the target node and release — dashed line shows the connection'
-            : 'Press on the start node, drag to the end node, and release'}
-        </p>
-      )}
+            : 'Press on the start node, drag to the end node, and release'
+            : 'Drag nodes to arrange · Shift + click to select multiple'}</span>
+          <span className="flow-canvas-scale">Fit · {Math.round(scale * 100)}% · {canvasWidth} × {canvasHeight}</span>
+        </div>
 
       <div ref={canvasWrapRef} className="flow-editor-canvas-wrap">
         <div
@@ -409,11 +481,13 @@ export function FlowEditor({
               const path = buildEdgePath(from, to, layer, edge)
               const key = edgeKey(edge.from, edge.to)
               const selected = selectedEdgeKeys.includes(key)
+              const previewStyle = getEdgePreviewStyle(edge, path)
               return (
                 <path
                   key={key}
                   d={pathToSvgD(path)}
-                  className={`flow-editor-edge ${selected ? 'selected' : ''}`}
+                  className={`flow-editor-edge ${selected ? 'selected' : ''} ${previewActive && revealState?.activeEdgeKeys.has(key) ? 'flow-editor-edge-active' : ''}`}
+                  style={previewStyle}
                   onPointerDown={(event) => {
                     event.stopPropagation()
                     selectEdge(key, event.shiftKey)
@@ -470,16 +544,20 @@ export function FlowEditor({
             const showNumber = hasFlowNodeNumber(node)
             const anchorIn = getFlowNodeAnchor(node, layer, 'in')
             const anchorOut = getFlowNodeAnchor(node, layer, 'out')
+            const isActive =
+              previewActive && revealState?.activeNodeIds.has(node.id)
+            const previewStyle = getNodePreviewStyle(node.id)
 
             return (
               <div
                 key={node.id}
-                className={`flow-editor-node flow-editor-node-${style} ${selected ? 'selected' : ''} ${connectSource ? 'connect-source' : ''} ${style === 'step' && !showNumber ? 'flow-editor-node-step-no-number' : ''}`}
+                className={`flow-editor-node flow-editor-node-${style} ${selected ? 'selected' : ''} ${connectSource ? 'connect-source' : ''} ${isActive ? 'flow-editor-node-active' : ''} ${style === 'step' && !showNumber ? 'flow-editor-node-step-no-number' : ''}`}
                 style={{
                   left: node.x * scale,
                   top: node.y * scale,
                   width: width * scale,
                   height: height * scale,
+                  ...previewStyle,
                 }}
                 onPointerDown={(event) => handleNodePointerDown(event, node)}
                 onPointerUp={(event) => handleNodePointerUp(event, node)}
@@ -511,6 +589,19 @@ export function FlowEditor({
           })}
         </div>
       </div>
+
+      <FlowRevealTimeline
+        layer={layer}
+        onUpdate={onUpdate}
+        previewTime={previewTime}
+        onPreviewTimeChange={setPreviewTime}
+        previewPlaying={previewPlaying}
+        onPreviewPlayingChange={setPreviewPlaying}
+        selectedNodeIds={selectedNodeIds}
+        selectedEdgeKeys={selectedEdgeKeys}
+        onSelectNodes={setSelectedNodeIds}
+        onSelectEdges={setSelectedEdgeKeys}
+      />
 
       <div className="flow-editor-props-dock">
         <p className="flow-editor-props-title">

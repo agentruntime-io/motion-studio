@@ -704,6 +704,28 @@ export function LayerInspector({
               }
             />
           </Field>
+          <Field label="Highlight active">
+            <label className="inspector-checkbox">
+              <input
+                type="checkbox"
+                checked={layer.flowAnimation?.highlightActive !== false}
+                onChange={(e) =>
+                  patch((l) =>
+                    l.type === 'flow'
+                      ? {
+                          ...l,
+                          flowAnimation: {
+                            ...l.flowAnimation,
+                            highlightActive: e.target.checked,
+                          },
+                        }
+                      : l,
+                  )
+                }
+              />
+              <span>Dim previous steps while animating</span>
+            </label>
+          </Field>
           <div className="flow-inspector-actions">
             <p className="flow-inspector-hint">
               {layer.nodes.length} nodes · {layer.edges.length} edges

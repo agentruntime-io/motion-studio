@@ -114,6 +114,19 @@ FLOW LAYER (process / n8n-style diagrams)
   Explicit edge timing in sequence:
     "sequence": ["n1", "edge:n1->n2", "n2", "edge:n2->n3", "n3"]
 
+  Reveal timeline (Edit flow modal):
+    "tracks": [{
+      "id": "main",
+      "entries": ["n1", "edge:n1->n2", "n2", { "parallel": ["edge:n2->a", "a"] }],
+      "waitForTracks": [{ "afterEntry": 2, "tracks": ["branch-a"] }]
+    }, {
+      "id": "branch-a",
+      "parallelWith": "main",
+      "parallelAfterEntry": 1,
+      "entries": ["edge:n2->side", "side"]
+    }]
+  highlightActive?: true — dims previous steps while the reveal plays
+
   Custom routing:
     "edges": [{ "from": "a", "to": "b", "points": [{ "x": 500, "y": 200 }] }]
 

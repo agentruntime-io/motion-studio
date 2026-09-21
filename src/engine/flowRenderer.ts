@@ -6,9 +6,10 @@ import {
   getFlowNode,
   getFlowNodeSize,
   getFlowNodeStyle,
+  getFlowRevealState,
   getNodeRevealProgress,
 } from './flowAnimation'
-import { drawAnimatedStroke, hasFlowNodeNumber } from '../lib/flowUtils'
+import { drawAnimatedStroke, edgeKey, hasFlowNodeNumber } from '../lib/flowUtils'
 
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -228,8 +229,9 @@ function drawFlowNode(
   layer: FlowLayer,
   localTime: number,
   images: Map<string, HTMLImageElement>,
+  progressOverride?: number,
 ): void {
-  const progress = getNodeRevealProgress(layer, node.id, localTime)
+  const progress = progressOverride ?? getNodeRevealProgress(layer, node.id, localTime)
   if (progress <= 0) return
 
   const style = getFlowNodeStyle(node, layer) ?? 'step'
@@ -281,6 +283,11 @@ export function drawFlowLayer(
 
   const localTime = time - layer.start
   const theme = layer.theme ?? {}
+  const highlightActive = layer.flowAnimation?.highlightActive !== false
+  const revealState = highlightActive ? getFlowRevealState(layer, localTime) : null
+  const hasActiveFocus =
+    revealState !== null &&
+    revealState.activeNodeIds.size + revealState.activeEdgeKeys.size > 0
 
   ctx.save()
   ctx.globalAlpha = transform.opacity
@@ -299,12 +306,40 @@ export function drawFlowLayer(
     const progress = getEdgeRevealProgress(layer, edge, localTime)
     if (progress <= 0) continue
 
+    ctx.save()
+    const key = edgeKey(edge.from, edge.to)
+    if (hasActiveFocus) {
+      if (revealState!.activeEdgeKeys.has(key)) {
+        ctx.globalAlpha = transform.opacity
+      } else if (revealState!.revealedEdgeKeys.has(key)) {
+        ctx.globalAlpha = transform.opacity * 0.45
+      } else {
+        ctx.globalAlpha = transform.opacity * progress
+      }
+    }
+
     const path = buildEdgePath(from, to, layer, edge)
     drawAnimatedEdgePath(ctx, path, progress)
+    ctx.restore()
   }
 
   for (const node of layer.nodes) {
-    drawFlowNode(ctx, node, layer, localTime, images)
+    const progress = getNodeRevealProgress(layer, node.id, localTime)
+    if (progress <= 0) continue
+
+    ctx.save()
+    if (hasActiveFocus) {
+      if (revealState!.activeNodeIds.has(node.id)) {
+        ctx.globalAlpha = transform.opacity
+      } else if (revealState!.revealedNodeIds.has(node.id)) {
+        ctx.globalAlpha = transform.opacity * 0.45
+      } else {
+        ctx.globalAlpha = transform.opacity * progress
+      }
+    }
+
+    drawFlowNode(ctx, node, layer, localTime, images, progress)
+    ctx.restore()
   }
 
   ctx.restore()
