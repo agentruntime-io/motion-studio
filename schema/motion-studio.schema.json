@@ -1,0 +1,521 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motion-studio.dev/schema/motion-studio.schema.json",
+  "title": "Motion Studio Project",
+  "type": "object",
+  "required": ["width", "height", "fps", "duration"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Motion Studio schema version, e.g. 1.0"
+    },
+    "name": { "type": "string" },
+    "width": { "type": "number", "exclusiveMinimum": 0 },
+    "height": { "type": "number", "exclusiveMinimum": 0 },
+    "fps": { "type": "number", "exclusiveMinimum": 0 },
+    "duration": { "type": "number", "minimum": 0 },
+    "backgroundColor": { "type": "string" },
+    "projectPath": { "type": "string" },
+    "theme": { "$ref": "#/$defs/projectTheme" },
+    "scenes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/scene" },
+      "minItems": 1
+    },
+    "layers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/layer" }
+    }
+  },
+  "anyOf": [
+    { "required": ["layers"] },
+    { "required": ["scenes"] }
+  ],
+  "$defs": {
+    "easing": {
+      "type": "string",
+      "enum": ["linear", "easeIn", "easeOut", "easeInOut"]
+    },
+    "transitionType": {
+      "type": "string",
+      "enum": [
+        "fade",
+        "slideLeft",
+        "slideRight",
+        "slideUp",
+        "slideDown",
+        "zoomIn",
+        "zoomOut",
+        "wipeLeft",
+        "wipeRight"
+      ]
+    },
+    "animationType": {
+      "type": "string",
+      "enum": [
+        "fadeIn",
+        "fadeOut",
+        "slideInLeft",
+        "slideInRight",
+        "slideInUp",
+        "slideInDown",
+        "scaleIn",
+        "scaleOut",
+        "bounce"
+      ]
+    },
+    "effectType": {
+      "type": "string",
+      "enum": ["blur", "brightness", "contrast", "grayscale", "sepia", "vignette", "glow"]
+    },
+    "fit": {
+      "type": "string",
+      "enum": ["cover", "contain", "fill"]
+    },
+    "projectTheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fonts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "body": { "type": "string" },
+            "heading": { "type": "string" }
+          }
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "primary": { "type": "string" },
+            "secondary": { "type": "string" },
+            "text": { "type": "string" },
+            "background": { "type": "string" }
+          }
+        },
+        "radius": { "type": "number", "minimum": 0 },
+        "spacing": { "type": "number", "minimum": 0 },
+        "motion": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "defaultDuration": { "type": "number", "exclusiveMinimum": 0 },
+            "defaultEasing": { "$ref": "#/$defs/easing" }
+          }
+        }
+      }
+    },
+    "scene": {
+      "type": "object",
+      "required": ["duration", "layers"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "layers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/layer" }
+        }
+      }
+    },
+    "baseLayer": {
+      "type": "object",
+      "required": ["start", "duration"],
+      "properties": {
+        "id": { "type": "string" },
+        "start": { "type": "number", "minimum": 0 },
+        "duration": { "type": "number", "exclusiveMinimum": 0 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "zIndex": { "type": "number" },
+        "rotation": { "type": "number" },
+        "transition": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "in": { "$ref": "#/$defs/transitionType" },
+            "out": { "$ref": "#/$defs/transitionType" },
+            "duration": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "animation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "in": { "$ref": "#/$defs/animationType" },
+            "out": { "$ref": "#/$defs/animationType" },
+            "duration": { "type": "number", "exclusiveMinimum": 0 },
+            "easing": { "$ref": "#/$defs/easing" }
+          }
+        },
+        "keyframes": { "$ref": "#/$defs/layerKeyframes" },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "$ref": "#/$defs/effectType" },
+              "value": { "type": "number" },
+              "intensity": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "layerKeyframes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["property", "keyframes"],
+            "additionalProperties": false,
+            "properties": {
+              "property": {
+                "type": "string",
+                "enum": [
+                  "opacity",
+                  "x",
+                  "y",
+                  "scale",
+                  "rotation",
+                  "width",
+                  "height",
+                  "color",
+                  "fontSize",
+                  "backgroundColor"
+                ]
+              },
+              "keyframes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["t", "value"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "t": { "type": "number", "minimum": 0 },
+                    "value": {
+                      "oneOf": [{ "type": "number" }, { "type": "string" }]
+                    },
+                    "easing": { "$ref": "#/$defs/easing" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "layer": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["image", "video", "title", "overlay", "audio", "flow"]
+            },
+            "src": { "type": "string", "minLength": 1 },
+            "fit": { "$ref": "#/$defs/fit" },
+            "trimStart": { "type": "number", "minimum": 0 },
+            "trimEnd": { "type": "number", "exclusiveMinimum": 0 },
+            "playbackRate": { "type": "number", "exclusiveMinimum": 0 },
+            "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+            "loop": { "type": "boolean" },
+            "text": { "type": "string" },
+            "style": { "$ref": "#/$defs/layerStyle" },
+            "overlayType": { "type": "string", "enum": ["text", "image", "shape"] },
+            "shape": { "type": "string", "enum": ["rectangle", "circle"] },
+            "defaultNodeStyle": { "type": "string", "enum": ["step", "card", "n8n"] },
+            "nodes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/flowNode" }
+            },
+            "edges": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/flowEdge" }
+            },
+            "flowAnimation": { "$ref": "#/$defs/flowAnimation" },
+            "theme": { "$ref": "#/$defs/flowTheme" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "image" } }, "required": ["type"] },
+              "then": { "required": ["src"] }
+            },
+            {
+              "if": { "properties": { "type": { "const": "video" } }, "required": ["type"] },
+              "then": { "required": ["src"] }
+            },
+            {
+              "if": { "properties": { "type": { "const": "title" } }, "required": ["type"] },
+              "then": { "required": ["text"] }
+            },
+            {
+              "if": { "properties": { "type": { "const": "overlay" } }, "required": ["type"] },
+              "then": { "required": ["overlayType"] }
+            },
+            {
+              "if": { "properties": { "type": { "const": "audio" } }, "required": ["type"] },
+              "then": { "required": ["src"] }
+            },
+            {
+              "if": { "properties": { "type": { "const": "flow" } }, "required": ["type"] },
+              "then": { "required": ["nodes", "edges"] }
+            }
+          ]
+        }
+      ]
+    },
+    "imageLayerLegacy": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "type": "object",
+          "required": ["type", "src"],
+          "properties": {
+            "type": { "const": "image" },
+            "src": { "type": "string", "minLength": 1 },
+            "fit": { "$ref": "#/$defs/fit" }
+          }
+        }
+      ]
+    },
+    "videoLayer": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "type": "object",
+          "required": ["type", "src"],
+          "properties": {
+            "type": { "const": "video" },
+            "src": { "type": "string", "minLength": 1 },
+            "fit": { "$ref": "#/$defs/fit" },
+            "trimStart": { "type": "number", "minimum": 0 },
+            "trimEnd": { "type": "number", "exclusiveMinimum": 0 },
+            "playbackRate": { "type": "number", "exclusiveMinimum": 0 },
+            "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+            "loop": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "titleLayer": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "type": "object",
+          "required": ["type", "text"],
+          "properties": {
+            "type": { "const": "title" },
+            "text": { "type": "string" },
+            "style": { "$ref": "#/$defs/textStyle" }
+          }
+        }
+      ]
+    },
+    "overlayLayer": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "type": "object",
+          "required": ["type", "overlayType"],
+          "properties": {
+            "type": { "const": "overlay" },
+            "overlayType": { "type": "string", "enum": ["text", "image", "shape"] },
+            "text": { "type": "string" },
+            "src": { "type": "string" },
+            "shape": { "type": "string", "enum": ["rectangle", "circle"] },
+            "style": { "$ref": "#/$defs/overlayStyle" }
+          }
+        }
+      ]
+    },
+    "audioLayer": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "type": "object",
+          "required": ["type", "src"],
+          "properties": {
+            "type": { "const": "audio" },
+            "src": { "type": "string", "minLength": 1 },
+            "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      ]
+    },
+    "flowLayer": {
+      "allOf": [
+        { "$ref": "#/$defs/baseLayer" },
+        {
+          "type": "object",
+          "required": ["type", "nodes", "edges"],
+          "properties": {
+            "type": { "const": "flow" },
+            "defaultNodeStyle": { "type": "string", "enum": ["step", "card", "n8n"] },
+            "nodes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/flowNode" }
+            },
+            "edges": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/flowEdge" }
+            },
+            "flowAnimation": { "$ref": "#/$defs/flowAnimation" },
+            "theme": { "$ref": "#/$defs/flowTheme" }
+          }
+        }
+      ]
+    },
+    "layerStyle": {
+      "type": "object",
+      "properties": {
+        "fontFamily": { "type": "string" },
+        "fontSize": { "type": "number", "exclusiveMinimum": 0 },
+        "fontWeight": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "color": { "type": "string" },
+        "align": { "type": "string", "enum": ["left", "right", "center", "start", "end"] },
+        "baseline": { "type": "string", "enum": ["top", "hanging", "middle", "alphabetic", "ideographic", "bottom"] },
+        "letterSpacing": { "type": "number" },
+        "backgroundColor": { "type": "string" },
+        "borderRadius": { "type": "number", "minimum": 0 },
+        "padding": { "type": "number", "minimum": 0 },
+        "borderColor": { "type": "string" },
+        "borderWidth": { "type": "number", "minimum": 0 },
+        "shadow": {
+          "type": "object",
+          "properties": {
+            "color": { "type": "string" },
+            "blur": { "type": "number", "minimum": 0 },
+            "offsetX": { "type": "number" },
+            "offsetY": { "type": "number" }
+          }
+        }
+      }
+    },
+    "textStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fontFamily": { "type": "string" },
+        "fontSize": { "type": "number", "exclusiveMinimum": 0 },
+        "fontWeight": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "color": { "type": "string" },
+        "align": { "type": "string", "enum": ["left", "right", "center", "start", "end"] },
+        "baseline": { "type": "string", "enum": ["top", "hanging", "middle", "alphabetic", "ideographic", "bottom"] },
+        "letterSpacing": { "type": "number" },
+        "shadow": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "color": { "type": "string" },
+            "blur": { "type": "number", "minimum": 0 },
+            "offsetX": { "type": "number" },
+            "offsetY": { "type": "number" }
+          }
+        }
+      }
+    },
+    "overlayStyle": {
+      "allOf": [
+        { "$ref": "#/$defs/textStyle" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "backgroundColor": { "type": "string" },
+            "borderRadius": { "type": "number", "minimum": 0 },
+            "padding": { "type": "number", "minimum": 0 },
+            "borderColor": { "type": "string" },
+            "borderWidth": { "type": "number", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "flowNode": {
+      "type": "object",
+      "required": ["id", "label", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "style": { "type": "string", "enum": ["step", "card", "n8n"] },
+        "label": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "number": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "icon": { "type": "string" },
+        "image": { "type": "string" },
+        "color": { "type": "string" }
+      }
+    },
+    "flowEdge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["x", "y"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "flowAnimation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["sequential", "parallel", "instant"] },
+        "stepDelay": { "type": "number", "minimum": 0 },
+        "lineDuration": { "type": "number", "minimum": 0 },
+        "nodeDuration": { "type": "number", "minimum": 0 },
+        "easing": { "$ref": "#/$defs/easing" },
+        "sequence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "flowTheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lineColor": { "type": "string" },
+        "lineWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "badgeColor": { "type": "string" },
+        "cardBackground": { "type": "string" },
+        "cardBorder": { "type": "string" },
+        "n8nBackground": { "type": "string" },
+        "n8nBorder": { "type": "string" },
+        "labelColor": { "type": "string" },
+        "subtitleColor": { "type": "string" }
+      }
+    }
+  }
+}

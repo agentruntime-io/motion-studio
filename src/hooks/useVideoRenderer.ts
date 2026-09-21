@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Layer, VideoProject } from '../types/project'
 import type { ProjectLoadContext } from '../lib/projectContext'
 import { buildResolveOptions } from '../lib/projectContext'
+import { compileForRender } from '../lib/normalizeProject'
 import { createRenderer, VideoRenderer } from '../engine/renderer'
 
 export interface RenderFrameOptions {
@@ -23,8 +24,9 @@ export function useVideoRenderer(project: VideoProject | null, context?: Project
     setError(null)
 
     const resolveOptions = buildResolveOptions(project, context)
+    const renderProject = compileForRender(project)
 
-    createRenderer(project, resolveOptions)
+    createRenderer(renderProject, resolveOptions)
       .then((renderer) => {
         if (cancelled) return
         setRenderer(renderer)
@@ -53,7 +55,8 @@ export function useVideoRenderer(project: VideoProject | null, context?: Project
     setReady(false)
     setError(null)
     try {
-      const renderer = await createRenderer(project, buildResolveOptions(project, context))
+      const renderProject = compileForRender(project)
+      const renderer = await createRenderer(renderProject, buildResolveOptions(project, context))
       setRenderer(renderer)
       setReady(true)
     } catch (err) {

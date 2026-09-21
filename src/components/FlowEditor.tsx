@@ -11,6 +11,7 @@ import {
   edgeKey,
   pathToSvgD,
   suggestFlowSequence,
+  hasFlowNodeNumber,
 } from '../lib/flowUtils'
 
 interface FlowEditorProps {
@@ -37,6 +38,7 @@ export function FlowEditor({
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [selectedEdgeKeys, setSelectedEdgeKeys] = useState<string[]>([])
   const [connectFromId, setConnectFromId] = useState<string | null>(null)
+  const [connectPreview, setConnectPreview] = useState<{ x: number; y: number } | null>(null)
   const [dragState, setDragState] = useState<{
     nodeId: string
     startX: number
@@ -78,6 +80,33 @@ export function FlowEditor({
   const patch = useCallback(
     (updater: (current: FlowLayer) => FlowLayer) => onUpdate(updater),
     [onUpdate],
+  )
+
+  const clientToCanvas = useCallback(
+    (clientX: number, clientY: number) => {
+      const canvas = canvasWrapRef.current?.querySelector('.flow-editor-canvas')
+      if (!canvas) return { x: 0, y: 0 }
+      const rect = canvas.getBoundingClientRect()
+      return {
+        x: Math.round((clientX - rect.left) / scale),
+        y: Math.round((clientY - rect.top) / scale),
+      }
+    },
+    [scale],
+  )
+
+  const completeConnection = useCallback(
+    (from: string, to: string) => {
+      if (from === to) return
+      patch((current) => {
+        if (current.edges.some((edge) => edge.from === from && edge.to === to)) return current
+        return { ...current, edges: [...current.edges, { from, to }] }
+      })
+      setConnectFromId(null)
+      setConnectPreview(null)
+      setMode('select')
+    },
+    [patch],
   )
 
   const clearSelection = useCallback(() => {
@@ -184,15 +213,7 @@ export function FlowEditor({
     if (mode === 'connect') {
       if (!connectFromId) {
         setConnectFromId(node.id)
-      } else if (connectFromId !== node.id) {
-        const from = connectFromId
-        const to = node.id
-        patch((current) => {
-          if (current.edges.some((edge) => edge.from === from && edge.to === to)) return current
-          return { ...current, edges: [...current.edges, { from, to }] }
-        })
-        setConnectFromId(null)
-        setMode('select')
+        setConnectPreview(clientToCanvas(event.clientX, event.clientY))
       }
       return
     }
@@ -206,8 +227,20 @@ export function FlowEditor({
     })
   }
 
+  const handleNodePointerUp = (event: React.PointerEvent, node: FlowNode) => {
+    if (mode !== 'connect' || !connectFromId) return
+    event.stopPropagation()
+    if (connectFromId !== node.id) {
+      completeConnection(connectFromId, node.id)
+    }
+  }
+
   const handlePointerMove = useCallback(
     (event: PointerEvent) => {
+      if (mode === 'connect' && connectFromId) {
+        setConnectPreview(clientToCanvas(event.clientX, event.clientY))
+      }
+
       if (dragState) {
         const dx = (event.clientX - dragState.startX) / scale
         const dy = (event.clientY - dragState.startY) / scale
@@ -242,7 +275,7 @@ export function FlowEditor({
         }))
       }
     },
-    [dragState, patch, scale, waypointDrag],
+    [clientToCanvas, connectFromId, dragState, mode, patch, scale, waypointDrag],
   )
 
   const handlePointerUp = useCallback(() => {
@@ -285,8 +318,16 @@ export function FlowEditor({
     return points[1]
   }
 
+  const connectFromNode = useMemo(
+    () => (connectFromId ? layer.nodes.find((node) => node.id === connectFromId) ?? null : null),
+    [connectFromId, layer.nodes],
+  )
+
   return (
-    <div className={`flow-editor ${layout === 'expanded' ? 'flow-editor-expanded' : ''}`} ref={containerRef}>
+    <div
+      className={`flow-editor ${layout === 'expanded' ? 'flow-editor-expanded' : ''} ${mode === 'connect' ? 'flow-editor-connect-mode' : ''}`}
+      ref={containerRef}
+    >
       <div className="flow-editor-toolbar">
         <button
           type="button"
@@ -294,6 +335,7 @@ export function FlowEditor({
           onClick={() => {
             setMode('select')
             setConnectFromId(null)
+            setConnectPreview(null)
           }}
         >
           Select
@@ -301,7 +343,11 @@ export function FlowEditor({
         <button
           type="button"
           className={`btn btn-ghost ${mode === 'connect' ? 'active' : ''}`}
-          onClick={() => setMode('connect')}
+          onClick={() => {
+            setMode('connect')
+            setConnectFromId(null)
+            setConnectPreview(null)
+          }}
         >
           Connect
         </button>
@@ -329,8 +375,8 @@ export function FlowEditor({
       {mode === 'connect' && (
         <p className="flow-editor-hint">
           {connectFromId
-            ? 'Click target node to connect…'
-            : 'Click source node, then target node'}
+            ? 'Drag to the target node and release — dashed line shows the connection'
+            : 'Press on the start node, drag to the end node, and release'}
         </p>
       )}
 
@@ -344,6 +390,10 @@ export function FlowEditor({
           onPointerDown={(event) => {
             if (event.target !== event.currentTarget) return
             clearSelection()
+            if (mode === 'connect') {
+              setConnectFromId(null)
+              setConnectPreview(null)
+            }
           }}
         >
           <svg
@@ -371,6 +421,15 @@ export function FlowEditor({
                 />
               )
             })}
+            {connectFromNode && connectPreview && (
+              <line
+                x1={getFlowNodeAnchor(connectFromNode, layer, 'out').x}
+                y1={getFlowNodeAnchor(connectFromNode, layer, 'out').y}
+                x2={connectPreview.x}
+                y2={connectPreview.y}
+                className="flow-editor-preview-edge"
+              />
+            )}
           </svg>
 
           {layer.edges.map((edge) => {
@@ -407,13 +466,15 @@ export function FlowEditor({
             const style = getFlowNodeStyle(node, layer) ?? 'step'
             const { width, height } = getFlowNodeSize(node, style)
             const selected = selectedNodeIds.includes(node.id)
+            const connectSource = connectFromId === node.id
+            const showNumber = hasFlowNodeNumber(node)
             const anchorIn = getFlowNodeAnchor(node, layer, 'in')
             const anchorOut = getFlowNodeAnchor(node, layer, 'out')
 
             return (
               <div
                 key={node.id}
-                className={`flow-editor-node flow-editor-node-${style} ${selected ? 'selected' : ''}`}
+                className={`flow-editor-node flow-editor-node-${style} ${selected ? 'selected' : ''} ${connectSource ? 'connect-source' : ''} ${style === 'step' && !showNumber ? 'flow-editor-node-step-no-number' : ''}`}
                 style={{
                   left: node.x * scale,
                   top: node.y * scale,
@@ -421,10 +482,11 @@ export function FlowEditor({
                   height: height * scale,
                 }}
                 onPointerDown={(event) => handleNodePointerDown(event, node)}
+                onPointerUp={(event) => handleNodePointerUp(event, node)}
                 onClick={(event) => event.stopPropagation()}
               >
                 <span className="flow-editor-node-label">{node.label}</span>
-                {style === 'step' && node.number !== undefined && (
+                {style === 'step' && showNumber && (
                   <span className="flow-editor-node-badge">{node.number}</span>
                 )}
                 {style === 'n8n' && (

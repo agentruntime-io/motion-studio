@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "name": "Scene Demo",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "duration": 0,
+  "scenes": [
+    {
+      "id": "hook",
+      "name": "Hook",
+      "duration": 3,
+      "layers": [
+        {
+          "id": "title",
+          "type": "title",
+          "text": "Scene 1: Hook",
+          "start": 0,
+          "duration": 3,
+          "width": 1280,
+          "height": 120,
+          "y": 300
+        }
+      ]
+    },
+    {
+      "id": "workflow",
+      "name": "Workflow",
+      "duration": 4,
+      "layers": [
+        {
+          "id": "title",
+          "type": "title",
+          "text": "Scene 2: Workflow",
+          "start": 0,
+          "duration": 4,
+          "width": 1280,
+          "height": 120,
+          "y": 300
+        }
+      ]
+    }
+  ],
+  "layers": []
+}

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "name": "Themed",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "duration": 6,
+  "backgroundColor": "#0b1220",
+  "theme": {
+    "fonts": {
+      "body": "Inter, system-ui, sans-serif",
+      "heading": "Inter, system-ui, sans-serif"
+    },
+    "colors": {
+      "primary": "#6366f1",
+      "text": "#f8fafc",
+      "background": "#0b1220"
+    },
+    "radius": 12,
+    "spacing": 16,
+    "motion": {
+      "defaultDuration": 0.6,
+      "defaultEasing": "easeOut"
+    }
+  },
+  "layers": [
+    {
+      "type": "title",
+      "text": "AgentRuntime Theme",
+      "start": 0,
+      "duration": 6,
+      "width": 1280,
+      "height": 120,
+      "y": 280
+    }
+  ]
+}

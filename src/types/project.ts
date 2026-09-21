@@ -128,6 +128,17 @@ export interface ImageLayer extends BaseLayer {
   fit?: 'cover' | 'contain' | 'fill'
 }
 
+export interface VideoLayer extends BaseLayer {
+  type: 'video'
+  src: string
+  fit?: 'cover' | 'contain' | 'fill'
+  trimStart?: number
+  trimEnd?: number
+  playbackRate?: number
+  volume?: number
+  loop?: boolean
+}
+
 export interface TitleLayer extends BaseLayer {
   type: 'title'
   text: string
@@ -203,6 +214,25 @@ export interface FlowTheme {
   subtitleColor?: string
 }
 
+export interface ProjectTheme {
+  fonts?: {
+    body?: string
+    heading?: string
+  }
+  colors?: {
+    primary?: string
+    secondary?: string
+    text?: string
+    background?: string
+  }
+  radius?: number
+  spacing?: number
+  motion?: {
+    defaultDuration?: number
+    defaultEasing?: EasingType
+  }
+}
+
 export interface FlowLayer extends BaseLayer {
   type: 'flow'
   defaultNodeStyle?: FlowNodeStyle
@@ -212,17 +242,28 @@ export interface FlowLayer extends BaseLayer {
   theme?: FlowTheme
 }
 
-export type Layer = ImageLayer | TitleLayer | OverlayLayer | AudioLayer | FlowLayer
+export type Layer = ImageLayer | VideoLayer | TitleLayer | OverlayLayer | AudioLayer | FlowLayer
+
+export interface Scene {
+  id?: string
+  name?: string
+  duration: number
+  layers: Layer[]
+}
 
 export interface VideoProject {
+  schemaVersion?: string
   name?: string
   width: number
   height: number
   fps: number
   duration: number
   backgroundColor?: string
+  theme?: ProjectTheme
   /** Root folder under repo projects/ for this video, e.g. "projects/demo-reel" */
   projectPath?: string
+  /** Authoring format — compiled to flat layers[] at render time */
+  scenes?: Scene[]
   layers: Layer[]
 }
 

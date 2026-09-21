@@ -51,7 +51,7 @@ export function getTrackKindLabel(kind: TrackKind): string {
 }
 
 export const ADD_LAYER_OPTIONS: { kind: AddLayerKind; label: string; short: string }[] = [
-  { kind: 'video', label: 'Video / Image', short: 'Video' },
+  { kind: 'video', label: 'Video clip', short: 'Video' },
   { kind: 'title', label: 'Title', short: 'Title' },
   { kind: 'overlay', label: 'Overlay', short: 'Overlay' },
   { kind: 'audio', label: 'Audio', short: 'Audio' },
@@ -77,6 +77,8 @@ export function getLayerLabel(layer: Layer): string {
       if (layer.src.startsWith('data:')) return 'Image'
       if (layer.src.startsWith('<svg')) return 'SVG'
       return layer.src.split('/').pop()?.split('?')[0] ?? 'Image'
+    case 'video':
+      return layer.src.split('/').pop()?.split('?')[0] ?? 'Video clip'
     case 'title':
       return layer.text.length > 18 ? `${layer.text.slice(0, 18)}…` : layer.text
     case 'overlay':
@@ -102,6 +104,8 @@ export function getLayerColor(layer: Layer): string {
   switch (layer.type) {
     case 'image':
       return '#365d4a'
+    case 'video':
+      return '#2563eb'
     case 'title':
       return '#63527e'
     case 'overlay':
@@ -118,7 +122,7 @@ export function getLayerColor(layer: Layer): string {
 }
 
 export function getTrackKind(layer: Layer): TrackKind {
-  if (layer.type === 'image') return 'video'
+  if (layer.type === 'image' || layer.type === 'video') return 'video'
   if (layer.type === 'title') return 'title'
   if (layer.type === 'audio') return 'audio'
   if (layer.type === 'flow') return 'overlay'
@@ -164,7 +168,7 @@ export function createDefaultLayer(
     case 'video':
       return {
         id,
-        type: 'image',
+        type: 'video',
         src: '',
         start,
         duration,
@@ -172,6 +176,9 @@ export function createDefaultLayer(
         height: project.height,
         zIndex: 0,
         fit: 'cover',
+        playbackRate: 1,
+        volume: 1,
+        loop: false,
       }
     case 'title':
       return {
@@ -226,6 +233,23 @@ export function createDefaultLayer(
   }
 }
 
+export function addImageLayer(project: VideoProject, startTime: number): VideoProject {
+  const start = clamp(startTime, 0, Math.max(0, project.duration - 0.5))
+  const duration = Math.max(0.5, Math.min(3, project.duration - start))
+  const layer: Layer = {
+    id: `image-${Math.random().toString(36).slice(2, 8)}`,
+    type: 'image',
+    src: '',
+    start,
+    duration,
+    width: project.width,
+    height: project.height,
+    zIndex: 0,
+    fit: 'cover',
+  }
+  return { ...project, layers: [...project.layers, layer] }
+}
+
 export function addLayer(
   project: VideoProject,
   kind: AddLayerKind,
@@ -258,6 +282,20 @@ export function updateLayer(
   const layers = [...project.layers]
   layers[index] = updater(layers[index])
   return { ...project, layers }
+}
+
+export function duplicateLayer(project: VideoProject, layerId: string, startTime: number): VideoProject {
+  const index = findLayerIndex(project, layerId)
+  if (index < 0) return project
+  const source = project.layers[index]
+  const copy = {
+    ...structuredClone(source),
+    id: `${source.type}-${Math.random().toString(36).slice(2, 8)}`,
+    start: clamp(startTime, 0, Math.max(0, project.duration - source.duration)),
+    x: (source.x ?? 0) + 24,
+    y: (source.y ?? 0) + 24,
+  }
+  return { ...project, layers: [...project.layers, copy] }
 }
 
 export function formatTimecode(seconds: number): string {

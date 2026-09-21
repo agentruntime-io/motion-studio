@@ -86,8 +86,15 @@ For Cursor agents authoring timelines, see [.cursor/skills/motion-studio/SKILL.m
 
 ## Export notes
 
-- Output: **WebM** (VP9/VP8)
+- Output: **WebM** (VP9/VP8) or **MP4** (H.264 via WebCodecs)
 - Export renders frame-by-frame at the specified FPS
+
+## Schema & validation
+
+- Machine-readable contract: [`schema/motion-studio.schema.json`](schema/motion-studio.schema.json)
+- Projects should include `"schemaVersion": "1.0"`
+- Validate fixtures: `npm run validate`
+- Agent docs: [`SKILL.md`](SKILL.md) · [`AGENTS.md`](AGENTS.md)
 
 ## Analytics (PostHog)
 

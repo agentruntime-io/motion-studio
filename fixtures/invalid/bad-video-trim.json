@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "duration": 5,
+  "layers": [
+    {
+      "type": "video",
+      "src": "clip.mp4",
+      "start": 0,
+      "duration": 5,
+      "trimStart": 2,
+      "trimEnd": 1
+    }
+  ]
+}

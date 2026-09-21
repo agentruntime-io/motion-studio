@@ -1,4 +1,4 @@
-import type { FlowLayer } from '../types/project'
+import type { FlowLayer, FlowNode } from '../types/project'
 
 export interface PathPoint {
   x: number
@@ -24,6 +24,11 @@ export function parseSequenceEntry(
 
 export function formatEdgeSequenceEntry(from: string, to: string): string {
   return `edge:${from}->${to}`
+}
+
+export function hasFlowNodeNumber(node: FlowNode): boolean {
+  if (node.number === undefined || node.number === null) return false
+  return String(node.number).trim().length > 0
 }
 
 export function suggestFlowSequence(layer: FlowLayer): string[] {

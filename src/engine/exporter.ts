@@ -12,14 +12,32 @@ export interface ExportRenderContext {
   fps: number
 }
 
+export type ExportFormat = 'webm' | 'mp4'
+
+function assertExportContext(context: ExportRenderContext): void {
+  const { width, height, duration, fps } = context
+  if (![width, height, duration, fps].every((value) => Number.isFinite(value) && value > 0)) {
+    throw new Error('Export dimensions, duration and frame rate must be positive')
+  }
+}
+
 export async function exportVideoWithRenderer(
+  context: ExportRenderContext,
+  onProgress?: (progress: ExportProgress) => void,
+  format: ExportFormat = 'webm',
+): Promise<Blob> {
+  if (format === 'mp4') {
+    return exportMp4WithRenderer(context, onProgress)
+  }
+  return exportWebmWithRenderer(context, onProgress)
+}
+
+async function exportWebmWithRenderer(
   context: ExportRenderContext,
   onProgress?: (progress: ExportProgress) => void,
 ): Promise<Blob> {
   const { renderFrame, width, height, duration, fps } = context
-  if (![width, height, duration, fps].every((value) => Number.isFinite(value) && value > 0)) {
-    throw new Error('Export dimensions, duration and frame rate must be positive')
-  }
+  assertExportContext(context)
   // Each recording owns its surface. Preview playback, seeking and other exports
   // must never be able to repaint the canvas being recorded.
   const canvas = document.createElement('canvas')
@@ -102,6 +120,86 @@ export async function exportVideoWithRenderer(
       fail(error)
     }
   })
+}
+
+async function exportMp4WithRenderer(
+  context: ExportRenderContext,
+  onProgress?: (progress: ExportProgress) => void,
+): Promise<Blob> {
+  const { renderFrame, width, height, duration, fps } = context
+  assertExportContext(context)
+
+  if (typeof VideoEncoder === 'undefined') {
+    throw new Error('MP4 export requires WebCodecs (VideoEncoder). Try WebM instead.')
+  }
+
+  const { Muxer, ArrayBufferTarget } = await import('mp4-muxer')
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Could not create export canvas')
+
+  const totalFrames = Math.ceil(duration * fps)
+  const frameDurationUs = Math.round(1_000_000 / fps)
+  const target = new ArrayBufferTarget()
+  const muxer = new Muxer({
+    target,
+    video: {
+      codec: 'avc',
+      width,
+      height,
+    },
+    fastStart: 'in-memory',
+  })
+
+  let encoderError: Error | null = null
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    error: (error) => {
+      encoderError = error instanceof Error ? error : new Error('VideoEncoder failed')
+    },
+  })
+
+  const codec = VideoEncoder.isConfigSupported({
+    codec: 'avc1.42E01E',
+    width,
+    height,
+    bitrate: 8_000_000,
+  })
+    .then((result) => (result.supported ? 'avc1.42E01E' : 'avc1.42001E'))
+    .catch(() => 'avc1.42E01E')
+
+  encoder.configure({
+    codec: await codec,
+    width,
+    height,
+    bitrate: 8_000_000,
+  })
+
+  onProgress?.({ phase: 'rendering', progress: 0, message: 'Starting MP4 export...' })
+  renderFrame(ctx, 0)
+
+  for (let frame = 0; frame < totalFrames; frame += 1) {
+    if (encoderError) throw encoderError
+    renderFrame(ctx, frame / fps)
+    const videoFrame = new VideoFrame(canvas, {
+      timestamp: frame * frameDurationUs,
+      duration: frameDurationUs,
+    })
+    encoder.encode(videoFrame, { keyFrame: frame % (fps * 2) === 0 })
+    videoFrame.close()
+    onProgress?.({
+      phase: 'encoding',
+      progress: Math.round(((frame + 1) / totalFrames) * 95),
+      message: `Frame ${frame + 1}/${totalFrames}`,
+    })
+  }
+
+  await encoder.flush()
+  muxer.finalize()
+  onProgress?.({ phase: 'done', progress: 100, message: 'Export complete' })
+  return new Blob([target.buffer], { type: 'video/mp4' })
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

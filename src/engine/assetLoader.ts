@@ -1,6 +1,7 @@
 import { describeImageSrc, isRemoteUrl, resolveImageSrc, type ResolveImageOptions } from './resolveImageSrc'
 
 const imageCache = new Map<string, HTMLImageElement>()
+const videoCache = new Map<string, HTMLVideoElement>()
 
 export async function loadImage(src: string, options: ResolveImageOptions = {}): Promise<HTMLImageElement> {
   const cacheKey = `${options.projectPath ?? ''}|${options.baseUrl ?? ''}|${src}`
@@ -38,8 +39,43 @@ export async function preloadProjectAssets(
   await Promise.all(unique.map((src) => loadImage(src, options)))
 }
 
+export async function loadVideo(src: string, options: ResolveImageOptions = {}): Promise<HTMLVideoElement> {
+  const cacheKey = `${options.projectPath ?? ''}|${options.baseUrl ?? ''}|${src}`
+  const cached = videoCache.get(cacheKey)
+  if (cached) return cached
+
+  const resolvedSrc = resolveImageSrc(src, options)
+
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'auto'
+    video.muted = true
+    video.playsInline = true
+    video.crossOrigin = 'anonymous'
+
+    const finish = () => {
+      videoCache.set(cacheKey, video)
+      resolve(video)
+    }
+
+    video.onloadeddata = finish
+    video.onerror = () => {
+      reject(new Error(`Failed to load video: ${src} (resolved: ${resolvedSrc})`))
+    }
+
+    video.src = resolvedSrc
+  })
+}
+
+export function seekVideo(video: HTMLVideoElement, timeSec: number): void {
+  if (Math.abs(video.currentTime - timeSec) > 0.03) {
+    video.currentTime = timeSec
+  }
+}
+
 export function clearAssetCache(): void {
   imageCache.clear()
+  videoCache.clear()
 }
 
 export function createGradientDataUrl(

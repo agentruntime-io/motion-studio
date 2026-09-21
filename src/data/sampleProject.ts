@@ -1,13 +1,20 @@
 import type { VideoProject } from '../types/project'
-import { createGradientDataUrl } from '../engine/assetLoader'
+import { validateAndPrepareProject } from '../lib/normalizeProject'
+
 const W = 1280
 const H = 720
 
-const scene1 = createGradientDataUrl(W, H, ['#1a1a2e', '#16213e'], 'Scene 1')
-const scene2 = createGradientDataUrl(W, H, ['#0f3460', '#533483'], 'Scene 2')
-const scene3 = createGradientDataUrl(W, H, ['#e94560', '#ff6b6b'], 'Scene 3')
+function gradientSvgDataUrl(width: number, height: number, from: string, to: string): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='${from}'/><stop offset='100%' stop-color='${to}'/></linearGradient></defs><rect width='${width}' height='${height}' fill='url(%23g)'/></svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+const scene1 = gradientSvgDataUrl(W, H, '#1a1a2e', '#16213e')
+const scene2 = gradientSvgDataUrl(W, H, '#0f3460', '#533483')
+const scene3 = gradientSvgDataUrl(W, H, '#e94560', '#ff6b6b')
 
 export const sampleProject: VideoProject = {
+  schemaVersion: '1.0',
   name: 'Demo Reel',
   width: W,
   height: H,
@@ -258,19 +265,23 @@ export function parseProjectJson(json: string): VideoProject {
   try {
     parsed = JSON.parse(json)
   } catch {
-    throw new Error('Invalid JSON syntax. The project must be one complete object with width, height, fps, duration, and layers[].')
+    throw new Error('Invalid JSON syntax. The project must be one complete object with width, height, fps, duration, and layers[] or scenes[].')
   }
 
   const project = parsed as VideoProject
 
-  if (!project.width || !project.height || !project.fps || !project.duration || !Array.isArray(project.layers)) {
+  if (!project.width || !project.height || !project.fps || project.duration === undefined) {
     if (parsed && typeof parsed === 'object' && ('tracks' in (parsed as object) || 'keyframes' in (parsed as object))) {
       throw new Error(
         'This looks like a keyframe fragment, not a full project. Paste a complete project JSON, or put keyframes inside a layer in layers[].',
       )
     }
-    throw new Error('Invalid project JSON: requires width, height, fps, duration, and layers[]')
+    throw new Error('Invalid project JSON: requires width, height, fps, duration, and layers[] or scenes[]')
   }
 
-  return project
+  if (!Array.isArray(project.layers) && !Array.isArray(project.scenes)) {
+    throw new Error('Invalid project JSON: requires layers[] or scenes[]')
+  }
+
+  return validateAndPrepareProject(project)
 }

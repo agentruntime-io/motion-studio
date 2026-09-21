@@ -5,14 +5,16 @@ import type {
   OverlayStyle,
   TextStyle,
   TitleLayer,
+  VideoLayer,
   VideoProject,
 } from '../types/project'
 import type { ResolveImageOptions } from './resolveImageSrc'
-import { loadImage } from './assetLoader'
+import { loadImage, loadVideo, seekVideo } from './assetLoader'
 import { computeLayerTransform } from './animations'
 import { applyCanvasEffects } from './effects'
 import { collectFlowImageSources, drawFlowLayer } from './flowRenderer'
 import { getMotionPathPoints } from './keyframeEngine'
+import { mergeOverlayStyle, mergeTextStyle, resolveProjectBackground } from '../lib/themeUtils'
 
 function collectImageSources(layers: Layer[]): string[] {
   return layers.flatMap((layer) => {
@@ -25,6 +27,10 @@ function collectImageSources(layers: Layer[]): string[] {
   })
 }
 
+function collectVideoSources(layers: Layer[]): string[] {
+  return layers.flatMap((layer) => (layer.type === 'video' && layer.src ? [layer.src] : []))
+}
+
 function getLayerBounds(
   layer: Layer,
   project: VideoProject,
@@ -35,10 +41,6 @@ function getLayerBounds(
     width: layer.width ?? project.width,
     height: layer.height ?? project.height,
   }
-}
-
-function mergeTextStyle(base: TextStyle | undefined, overrides: TextStyle): TextStyle {
-  return { ...base, ...overrides }
 }
 
 function applyTextStyle(ctx: CanvasRenderingContext2D, style: TextStyle | undefined): void {
@@ -59,12 +61,42 @@ function applyTextStyle(ctx: CanvasRenderingContext2D, style: TextStyle | undefi
   }
 }
 
-function drawImageLayer(
+function drawMediaInBounds(
   ctx: CanvasRenderingContext2D,
-  layer: ImageLayer,
+  media: CanvasImageSource,
+  mediaWidth: number,
+  mediaHeight: number,
+  width: number,
+  height: number,
+  fit: 'cover' | 'contain' | 'fill',
+): void {
+  let drawWidth = width
+  let drawHeight = height
+  let drawX = 0
+  let drawY = 0
+
+  if (fit === 'cover' || fit === 'contain') {
+    const scale =
+      fit === 'cover'
+        ? Math.max(width / mediaWidth, height / mediaHeight)
+        : Math.min(width / mediaWidth, height / mediaHeight)
+    drawWidth = mediaWidth * scale
+    drawHeight = mediaHeight * scale
+    drawX = (width - drawWidth) / 2
+    drawY = (height - drawHeight) / 2
+  }
+
+  ctx.drawImage(media, drawX, drawY, drawWidth, drawHeight)
+}
+
+function drawRasterLayer(
+  ctx: CanvasRenderingContext2D,
+  layer: ImageLayer | VideoLayer,
   project: VideoProject,
   time: number,
-  image: HTMLImageElement,
+  media: CanvasImageSource,
+  mediaWidth: number,
+  mediaHeight: number,
 ): void {
   const bounds = getLayerBounds(layer, project)
   const { transform, bounds: keyBounds } = computeLayerTransform(
@@ -101,26 +133,21 @@ function drawImageLayer(
     ctx.scale(transform.scaleX, transform.scaleY)
     ctx.translate(-width / 2, -height / 2)
 
-    const fit = layer.fit ?? 'cover'
-    let drawWidth = width
-    let drawHeight = height
-    let drawX = 0
-    let drawY = 0
-
-    if (fit === 'cover' || fit === 'contain') {
-      const scale =
-        fit === 'cover'
-          ? Math.max(width / image.width, height / image.height)
-          : Math.min(width / image.width, height / image.height)
-      drawWidth = image.width * scale
-      drawHeight = image.height * scale
-      drawX = (width - drawWidth) / 2
-      drawY = (height - drawHeight) / 2
-    }
-
-    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
+    drawMediaInBounds(ctx, media, mediaWidth, mediaHeight, width, height, layer.fit ?? 'cover')
     ctx.restore()
   })
+}
+
+function getVideoPlaybackTime(layer: VideoLayer, localTime: number, videoDuration: number): number {
+  const trimStart = layer.trimStart ?? 0
+  const trimEnd = layer.trimEnd ?? videoDuration
+  const rate = layer.playbackRate ?? 1
+  const span = Math.max(0.001, trimEnd - trimStart)
+  const shifted = localTime * rate
+  if (layer.loop) {
+    return trimStart + (shifted % span)
+  }
+  return trimStart + Math.min(span, shifted)
 }
 
 function drawTitleLayer(
@@ -148,7 +175,7 @@ function drawTitleLayer(
 
   const width = keyBounds.width ?? bounds.width
   const height = keyBounds.height ?? bounds.height
-  const mergedStyle = mergeTextStyle(layer.style, style)
+  const mergedStyle = mergeTextStyle(project.theme, layer.style, style)
 
   applyCanvasEffects(ctx, layer.effects, () => {
     ctx.save()
@@ -193,7 +220,7 @@ function drawOverlayLayer(
 
   const width = keyBounds.width ?? bounds.width
   const height = keyBounds.height ?? bounds.height
-  const style: OverlayStyle = { ...layer.style, ...keyStyle }
+  const style: OverlayStyle = mergeOverlayStyle(project.theme, layer.style, keyStyle)
 
   applyCanvasEffects(ctx, layer.effects, () => {
     ctx.save()
@@ -302,6 +329,7 @@ export function drawMotionPath(
 export class VideoRenderer {
   private project: VideoProject
   private images = new Map<string, HTMLImageElement>()
+  private videos = new Map<string, HTMLVideoElement>()
   private loaded = false
   private resolveOptions: ResolveImageOptions
 
@@ -311,14 +339,19 @@ export class VideoRenderer {
   }
 
   async load(): Promise<void> {
-    const sources = collectImageSources(this.project.layers)
+    const imageSources = collectImageSources(this.project.layers)
+    const videoSources = collectVideoSources(this.project.layers)
 
-    await Promise.all(
-      sources.map(async (src) => {
+    await Promise.all([
+      ...imageSources.map(async (src) => {
         const img = await loadImage(src, this.resolveOptions)
         this.images.set(src, img)
       }),
-    )
+      ...videoSources.map(async (src) => {
+        const video = await loadVideo(src, this.resolveOptions)
+        this.videos.set(src, video)
+      }),
+    ])
     this.loaded = true
   }
 
@@ -329,7 +362,8 @@ export class VideoRenderer {
   ): void {
     if (!this.loaded) return
 
-    const { width, height, backgroundColor = '#000000', layers } = this.project
+    const { width, height, layers } = this.project
+    const backgroundColor = resolveProjectBackground(this.project)
 
     ctx.clearRect(0, 0, width, height)
     ctx.fillStyle = backgroundColor
@@ -343,7 +377,19 @@ export class VideoRenderer {
       switch (layer.type) {
         case 'image': {
           const image = this.images.get(layer.src)
-          if (image) drawImageLayer(ctx, layer, this.project, time, image)
+          if (image) {
+            drawRasterLayer(ctx, layer, this.project, time, image, image.width, image.height)
+          }
+          break
+        }
+        case 'video': {
+          const video = this.videos.get(layer.src)
+          if (video) {
+            const localTime = time - layer.start
+            const playbackTime = getVideoPlaybackTime(layer, localTime, video.duration || 0)
+            seekVideo(video, playbackTime)
+            drawRasterLayer(ctx, layer, this.project, time, video, video.videoWidth, video.videoHeight)
+          }
           break
         }
         case 'title':
@@ -369,6 +415,7 @@ export class VideoRenderer {
     this.project = project
     this.loaded = false
     this.images.clear()
+    this.videos.clear()
   }
 }
 

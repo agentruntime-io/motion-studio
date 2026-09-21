@@ -8,7 +8,7 @@ import {
   getFlowNodeStyle,
   getNodeRevealProgress,
 } from './flowAnimation'
-import { drawAnimatedStroke } from '../lib/flowUtils'
+import { drawAnimatedStroke, hasFlowNodeNumber } from '../lib/flowUtils'
 
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -71,26 +71,29 @@ function drawStepNode(
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  } else {
+  } else if (hasFlowNodeNumber(node)) {
     ctx.fillStyle = theme.badgeColor ?? node.color ?? '#2563eb'
     ctx.beginPath()
     ctx.arc(cx, cy, Math.min(width, height) / 2, 0, Math.PI * 2)
     ctx.fill()
 
-    if (node.number !== undefined) {
-      ctx.fillStyle = '#ffffff'
-      ctx.font = `700 ${Math.floor(height * 0.42)}px system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(String(node.number), cx, cy + 1)
-    }
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `700 ${Math.floor(height * 0.42)}px system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(node.number), cx, cy + 1)
   }
 
   ctx.fillStyle = theme.labelColor ?? '#64748b'
   ctx.font = `500 ${Math.max(13, height * 0.28)}px system-ui, sans-serif`
   ctx.textAlign = 'center'
-  ctx.textBaseline = 'top'
-  ctx.fillText(node.label, cx, node.y + height + 8)
+  if (hasFlowNodeNumber(node)) {
+    ctx.textBaseline = 'top'
+    ctx.fillText(node.label, cx, node.y + height + 8)
+  } else {
+    ctx.textBaseline = 'middle'
+    ctx.fillText(node.label, cx, cy)
+  }
 
   ctx.restore()
 }
@@ -129,12 +132,12 @@ function drawCardNode(
   const badgeR = 16
   const badgeCx = cx
   const badgeCy = node.y + 18
-  ctx.fillStyle = theme.badgeColor ?? node.color ?? '#2563eb'
-  ctx.beginPath()
-  ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2)
-  ctx.fill()
+  if (hasFlowNodeNumber(node)) {
+    ctx.fillStyle = theme.badgeColor ?? node.color ?? '#2563eb'
+    ctx.beginPath()
+    ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2)
+    ctx.fill()
 
-  if (node.number !== undefined) {
     ctx.fillStyle = '#ffffff'
     ctx.font = '700 14px system-ui, sans-serif'
     ctx.textAlign = 'center'
@@ -146,7 +149,7 @@ function drawCardNode(
   ctx.font = '600 15px system-ui, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
-  ctx.fillText(node.label, cx, node.y + 40, width - 20)
+  ctx.fillText(node.label, cx, hasFlowNodeNumber(node) ? node.y + 40 : node.y + 24, width - 20)
 
   if (node.subtitle) {
     ctx.fillStyle = theme.subtitleColor ?? '#64748b'

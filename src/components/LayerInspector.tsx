@@ -70,31 +70,45 @@ export function LayerInspector({
         <span className="inspector-type">{layer.type}</span>
       </div>
 
-      {(layer.type === 'image' || layer.type === 'audio') && (
+      {(layer.type === 'image' || layer.type === 'video' || layer.type === 'audio') && (
         <InspectorSection title="Source">
-          <Field label={layer.type === 'audio' ? 'Audio file' : 'Image / video'}>
+          <Field
+            label={
+              layer.type === 'audio'
+                ? 'Audio file'
+                : layer.type === 'video'
+                  ? 'Video file'
+                  : 'Image file'
+            }
+          >
             <input
               type="text"
               className="inspector-input"
               value={layer.src}
-              placeholder="path/to/file.mp3 or URL"
+              placeholder={
+                layer.type === 'audio'
+                  ? 'path/to/file.mp3 or URL'
+                  : layer.type === 'video'
+                    ? 'path/to/clip.mp4 or URL'
+                    : 'path/to/image.jpg or URL'
+              }
               onChange={(e) =>
                 patch((l) =>
-                  l.type === 'image' || l.type === 'audio'
+                  l.type === 'image' || l.type === 'video' || l.type === 'audio'
                     ? { ...l, src: e.target.value }
                     : l,
                 )
               }
             />
           </Field>
-          {layer.type === 'image' && (
+          {(layer.type === 'image' || layer.type === 'video') && (
             <Field label="Fit">
               <select
                 className="inspector-select"
                 value={layer.fit ?? 'cover'}
                 onChange={(e) =>
                   patch((l) =>
-                    l.type === 'image'
+                    l.type === 'image' || l.type === 'video'
                       ? { ...l, fit: e.target.value as 'cover' | 'contain' | 'fill' }
                       : l,
                   )
@@ -105,6 +119,76 @@ export function LayerInspector({
                 <option value="fill">Fill</option>
               </select>
             </Field>
+          )}
+          {layer.type === 'video' && (
+            <>
+              <Field label="Trim start (s)">
+                <input
+                  type="number"
+                  className="inspector-input"
+                  min={0}
+                  step={0.1}
+                  value={layer.trimStart ?? 0}
+                  onChange={(e) =>
+                    patch((l) =>
+                      l.type === 'video'
+                        ? { ...l, trimStart: Number(e.target.value) }
+                        : l,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Trim end (s)">
+                <input
+                  type="number"
+                  className="inspector-input"
+                  min={0}
+                  step={0.1}
+                  value={layer.trimEnd ?? ''}
+                  placeholder="auto"
+                  onChange={(e) =>
+                    patch((l) =>
+                      l.type === 'video'
+                        ? {
+                            ...l,
+                            trimEnd: e.target.value === '' ? undefined : Number(e.target.value),
+                          }
+                        : l,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Playback rate">
+                <input
+                  type="number"
+                  className="inspector-input"
+                  min={0.1}
+                  step={0.1}
+                  value={layer.playbackRate ?? 1}
+                  onChange={(e) =>
+                    patch((l) =>
+                      l.type === 'video'
+                        ? { ...l, playbackRate: Number(e.target.value) }
+                        : l,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Loop">
+                <label className="inspector-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={layer.loop ?? false}
+                    onChange={(e) =>
+                      patch((l) =>
+                        l.type === 'video' ? { ...l, loop: e.target.checked } : l,
+                      )
+                    }
+                  />
+                  Loop clip
+                </label>
+              </Field>
+            </>
           )}
           {layer.type === 'audio' && (
             <Field label="Volume">

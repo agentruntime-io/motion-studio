@@ -16,13 +16,16 @@ import { useWorkspaceLayout } from './hooks/useWorkspaceLayout'
 import { loadStoredProjectPath, saveStoredProjectPath } from './lib/projectContext'
 import { isEditableTarget, readProjectJsonFile } from './lib/projectIO'
 import {
+  addImageLayer,
   addLayer,
+  duplicateLayer,
   findLayerIndex,
   getLayerId,
   removeLayer,
   updateLayer,
   type AddLayerKind,
 } from './lib/layerUtils'
+import { snapValue } from './lib/hitTest'
 import {
   clampLayerKeyframes,
   cloneLayerKeyframes,
@@ -189,6 +192,25 @@ function App() {
     [applyProject, project],
   )
 
+  const handlePreviewLayerPatch = useCallback(
+    (layerId: string, patch: Partial<Layer>) => {
+      applyProject(
+        updateLayer(project, layerId, (layer) => ({ ...layer, ...patch }) as Layer),
+        'debounced',
+      )
+    },
+    [applyProject, project],
+  )
+
+  const handleAddImageLayer = useCallback(() => {
+    const next = addImageLayer(project, currentTime)
+    const index = next.layers.length - 1
+    const newLayer = next.layers[index]
+    applyProject(next, true)
+    setSelectedLayerId(getLayerId(newLayer, index))
+    analytics.layerAdded('image', next)
+  }, [applyProject, project, currentTime])
+
   const handleTimelineUpdate = useCallback(
     (layerId: string, patch: { start?: number; duration?: number }) => {
       applyProject(
@@ -316,9 +338,40 @@ function App() {
           handleOpenProjectFile()
           return
         }
+        if (event.key === 'd' && selectedLayerId) {
+          event.preventDefault()
+          applyProject(duplicateLayer(project, selectedLayerId, currentTime), true)
+          return
+        }
       }
 
       if (isEditableTarget(event.target)) return
+
+      if (
+        selectedLayerId &&
+        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) &&
+        !mod
+      ) {
+        const step = event.shiftKey ? 10 : 1
+        const index = findLayerIndex(project, selectedLayerId)
+        if (index >= 0) {
+          const layer = project.layers[index]
+          if (layer.type !== 'audio') {
+            event.preventDefault()
+            const delta = {
+              ArrowUp: { y: (layer.y ?? 0) - step },
+              ArrowDown: { y: (layer.y ?? 0) + step },
+              ArrowLeft: { x: (layer.x ?? 0) - step },
+              ArrowRight: { x: (layer.x ?? 0) + step },
+            }[event.key]!
+            handlePreviewLayerPatch(selectedLayerId, {
+              x: snapValue(delta.x ?? layer.x ?? 0),
+              y: snapValue(delta.y ?? layer.y ?? 0),
+            })
+          }
+        }
+        return
+      }
 
       if (event.key === 'k' || event.key === 'K') {
         event.preventDefault()
@@ -358,11 +411,13 @@ function App() {
     applyProject,
     deleteSelectedKeyframe,
     handleOpenProjectFile,
+    handlePreviewLayerPatch,
     keyframeClipboard,
     project,
     selectedKeyframe,
     selectedLayer,
     selectedLayerId,
+    currentTime,
   ])
 
   const displayError = parseError ?? loadError
@@ -497,7 +552,7 @@ function App() {
             <h3>Make something move.</h3>
             <p>Start with a layer. Turn it into a story.</p>
             <div className="quick-add-grid">
-              <button onClick={() => handleAddLayer('video')}><span>▧</span>Visual<span>+</span></button>
+              <button onClick={handleAddImageLayer}><span>▧</span>Visual<span>+</span></button>
               <button onClick={() => handleAddLayer('title')}><span>T</span>Title<span>+</span></button>
               <button onClick={() => handleAddLayer('overlay')}><span>◇</span>Overlay<span>+</span></button>
               <button onClick={() => handleAddLayer('audio')}><span>♫</span>Audio<span>+</span></button>
@@ -553,6 +608,9 @@ function App() {
               currentTime={currentTime}
               onCurrentTimeChange={setCurrentTime}
               onPreviewPlay={() => analytics.previewPlayed(project)}
+              selectedLayerId={selectedLayerId}
+              onSelectLayer={setSelectedLayerId}
+              onPreviewLayerPatch={handlePreviewLayerPatch}
             />
           </div>
 

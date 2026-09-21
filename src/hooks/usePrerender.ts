@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { VideoProject } from '../types/project'
 import type { ExportProgress } from '../engine/exporter'
 import { exportVideoWithRenderer } from '../engine/exporter'
+import { compileForRender } from '../lib/normalizeProject'
 import {
   clearPrerender,
   computeProjectFingerprint,
@@ -60,20 +61,22 @@ export function usePrerender({
     setVersion((v) => v + 1)
   }, [projectPath])
 
+  const renderProject = useMemo(() => compileForRender(project), [project])
+
   const runPrerender = useCallback(async () => {
     if (!ready || rendering) return
 
     setRendering(true)
     setProgress({ phase: 'rendering', progress: 0, message: 'Pre-rendering…' })
-    analytics.prerenderStarted(project)
+    analytics.prerenderStarted(renderProject)
 
     try {
       const blob = await exportVideoWithRenderer(
         {
-          duration: project.duration,
-          fps: project.fps,
-          width: project.width,
-          height: project.height,
+          duration: renderProject.duration,
+          fps: renderProject.fps,
+          width: renderProject.width,
+          height: renderProject.height,
           renderFrame,
         },
         setProgress,
@@ -81,10 +84,10 @@ export function usePrerender({
 
       setPrerender(projectPath, fingerprint, blob)
       setVersion((v) => v + 1)
-      analytics.prerenderCompleted(project)
+      analytics.prerenderCompleted(renderProject)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Pre-render failed'
-      analytics.prerenderFailed(project, message)
+      analytics.prerenderFailed(renderProject, message)
       setProgress({
         phase: 'error',
         progress: 0,
@@ -93,7 +96,7 @@ export function usePrerender({
     } finally {
       setRendering(false)
     }
-  }, [fingerprint, project.width, project.height, project.duration, project.fps, projectPath, ready, renderFrame, rendering])
+  }, [fingerprint, projectPath, ready, renderFrame, renderProject, rendering])
 
   return {
     prerenderUrl,

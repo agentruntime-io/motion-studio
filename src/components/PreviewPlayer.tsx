@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { Layer, VideoProject } from '../types/project'
 import type { RenderFrameOptions } from '../hooks/useVideoRenderer'
+import { PreviewManipulator } from './PreviewManipulator'
 
 export interface PreviewPlayerHandle {
   getCanvas: () => HTMLCanvasElement | null
@@ -17,6 +18,10 @@ interface PreviewPlayerProps {
   onCurrentTimeChange?: (time: number) => void
   onTimeChange?: (time: number) => void
   onPreviewPlay?: () => void
+  onCanvasReady?: (canvas: HTMLCanvasElement | null) => void
+  selectedLayerId?: string | null
+  onSelectLayer?: (layerId: string | null) => void
+  onPreviewLayerPatch?: (layerId: string, patch: Partial<Layer>) => void
 }
 
 function formatTime(seconds: number): string {
@@ -39,10 +44,15 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
       onCurrentTimeChange,
       onTimeChange,
       onPreviewPlay,
+      onCanvasReady,
+      selectedLayerId = null,
+      onSelectLayer,
+      onPreviewLayerPatch,
     },
     ref,
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const [playing, setPlaying] = useState(false)
     const [internalTime, setInternalTime] = useState(0)
@@ -67,6 +77,12 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
     useImperativeHandle(ref, () => ({
       getCanvas: () => canvasRef.current,
     }))
+
+    useEffect(() => {
+      setCanvasEl(canvasRef.current)
+      onCanvasReady?.(canvasRef.current)
+      return () => onCanvasReady?.(null)
+    }, [onCanvasReady, ready, useVideo])
 
     const draw = useCallback(
       (time: number) => {
@@ -191,6 +207,7 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
               width: '100%',
               height: '100%',
               display: useVideo ? 'none' : 'block',
+              cursor: 'default',
             }}
           />
           {useVideo && prerenderUrl && (
@@ -203,6 +220,16 @@ export const PreviewPlayer = forwardRef<PreviewPlayerHandle, PreviewPlayerProps>
             />
           )}
           {!ready && <div className="preview-loading">Loading assets...</div>}
+          {onPreviewLayerPatch && onSelectLayer && (
+            <PreviewManipulator
+              project={project}
+              canvas={canvasEl}
+              currentTime={currentTime}
+              selectedLayerId={selectedLayerId}
+              onSelectLayer={onSelectLayer}
+              onUpdateLayer={onPreviewLayerPatch}
+            />
+          )}
         </div>
         </div>
 

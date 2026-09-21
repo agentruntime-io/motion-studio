@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "duration": 5,
+  "layers": [
+    {
+      "type": "title",
+      "text": "Missing duration field on layer",
+      "start": 0,
+      "duration": 0,
+      "width": 1280,
+      "height": 120
+    }
+  ]
+}

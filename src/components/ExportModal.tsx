@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { VideoProject } from '../types/project'
-import type { ExportProgress } from '../engine/exporter'
+import type { ExportFormat, ExportProgress } from '../engine/exporter'
 import { downloadBlob, exportVideoWithRenderer } from '../engine/exporter'
 import { analytics } from '../lib/analytics'
+import { compileForRender } from '../lib/normalizeProject'
 
 interface ExportModalProps {
   open: boolean
@@ -20,7 +21,10 @@ export function ExportModal({
   renderFrame,
 }: ExportModalProps) {
   const [exporting, setExporting] = useState(false)
+  const [format, setFormat] = useState<ExportFormat>('webm')
   const [progress, setProgress] = useState<ExportProgress | null>(null)
+  const renderProject = useMemo(() => compileForRender(project), [project])
+  const mp4Supported = typeof VideoEncoder !== 'undefined'
 
   useEffect(() => {
     if (!open) return
@@ -56,17 +60,18 @@ export function ExportModal({
     try {
       const blob = await exportVideoWithRenderer(
         {
-          duration: project.duration,
-          fps: project.fps,
-          width: project.width,
-          height: project.height,
+          duration: renderProject.duration,
+          fps: renderProject.fps,
+          width: renderProject.width,
+          height: renderProject.height,
           renderFrame,
         },
         setProgress,
+        format,
       )
 
       const name = (project.name ?? 'video').replace(/\s+/g, '-').toLowerCase()
-      downloadBlob(blob, `${name}.webm`)
+      downloadBlob(blob, `${name}.${format}`)
       analytics.exportCompleted(project)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Export failed'
@@ -112,13 +117,31 @@ export function ExportModal({
         </div>
 
         <p className="export-desc">
-          Renders all frames from your JSON timeline and downloads a WebM video.
+          Renders all frames from your JSON timeline and downloads a video file.
         </p>
+
+        <div className="export-format-row">
+          <label className="field-label" htmlFor="export-format">
+            Format
+          </label>
+          <select
+            id="export-format"
+            className="inspector-select"
+            value={format}
+            disabled={exporting}
+            onChange={(event) => setFormat(event.target.value as ExportFormat)}
+          >
+            <option value="webm">WebM (VP9/VP8)</option>
+            <option value="mp4" disabled={!mp4Supported}>
+              MP4 (H.264){!mp4Supported ? ' — WebCodecs required' : ''}
+            </option>
+          </select>
+        </div>
 
         <dl className="export-meta">
           <div>
-            <dt>Format</dt>
-            <dd>WebM (VP9/VP8)</dd>
+            <dt>Output</dt>
+            <dd>{format === 'mp4' ? 'MP4 (H.264)' : 'WebM (VP9/VP8)'}</dd>
           </div>
           <div>
             <dt>Resolution</dt>
@@ -132,7 +155,7 @@ export function ExportModal({
           </div>
           <div>
             <dt>Duration</dt>
-            <dd>{project.duration}s</dd>
+            <dd>{renderProject.duration}s</dd>
           </div>
         </dl>
 
@@ -159,7 +182,7 @@ export function ExportModal({
             onClick={handleExport}
             disabled={!ready || exporting}
           >
-            {exporting ? 'Exporting…' : 'Download WebM'}
+            {exporting ? 'Exporting…' : `Download ${format.toUpperCase()}`}
           </button>
         </div>
       </div>
